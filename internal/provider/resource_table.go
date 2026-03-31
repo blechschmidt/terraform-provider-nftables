@@ -144,7 +144,8 @@ func (r *TableResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	state.Dormant = types.BoolValue(found.Flags&0x1 != 0) // NFT_TABLE_F_DORMANT
+	// Note: ListTablesOfFamily doesn't return flags reliably in all kernel/library
+	// versions, so we preserve the dormant state from Terraform state.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 

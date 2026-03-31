@@ -298,12 +298,18 @@ func (r *ChainResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 
 	table := &nftables.Table{Family: family, Name: state.Table.ValueString()}
-
-	r.data.Conn.DelChain(&nftables.Chain{
+	chain := &nftables.Chain{
 		Name:  state.Name.ValueString(),
 		Table: table,
-	})
+	}
 
+	// Flush all rules in the chain before deleting to avoid "device busy"
+	r.data.Conn.FlushChain(chain)
+	if err := r.data.Conn.Flush(); err != nil {
+		// Ignore flush errors - chain may already be empty
+	}
+
+	r.data.Conn.DelChain(chain)
 	if err := r.data.Conn.Flush(); err != nil {
 		resp.Diagnostics.AddError("Failed to delete chain", err.Error())
 		return

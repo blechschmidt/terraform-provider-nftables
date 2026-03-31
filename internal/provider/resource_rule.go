@@ -936,9 +936,11 @@ func parseIPMatch(tokens []string, family nftables.TableFamily) ([]expr.Any, int
 
 	switch field {
 	case "saddr":
-		return parseIPAddrMatch(value, 12, 4, op)
+		exprs, _, err := parseIPAddrMatch(value, 12, 4, op)
+		return exprs, i, err
 	case "daddr":
-		return parseIPAddrMatch(value, 16, 4, op)
+		exprs, _, err := parseIPAddrMatch(value, 16, 4, op)
+		return exprs, i, err
 	case "protocol":
 		proto, err := parseProtocol(value)
 		if err != nil {
@@ -2472,7 +2474,12 @@ func parseMetaMatch(tokens []string) ([]expr.Any, int, error) {
 func parseMetaShorthand(tokens []string) ([]expr.Any, int, error) {
 	// Convert shorthand like "iifname eth0" to "meta iifname eth0"
 	newTokens := append([]string{"meta"}, tokens...)
-	return parseMetaMatch(newTokens)
+	exprs, consumed, err := parseMetaMatch(newTokens)
+	if err != nil {
+		return nil, 0, err
+	}
+	// Subtract 1 because we prepended "meta"
+	return exprs, consumed - 1, nil
 }
 
 func parseMetaSet(tokens []string) ([]expr.Any, int, error) {

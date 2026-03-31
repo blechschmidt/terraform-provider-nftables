@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
-
 	"github.com/google/nftables"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -27,6 +25,7 @@ type NftablesProviderModel struct {
 type NftablesProviderData struct {
 	Conn      *nftables.Conn
 	Namespace string
+	nsFile    *os.File // kept open for namespace fd lifetime
 }
 
 func New(version string) func() provider.Provider {
@@ -75,10 +74,27 @@ func (p *NftablesProvider) Configure(ctx context.Context, req provider.Configure
 			)
 			return
 		}
-		// We need to keep the fd open for the lifetime of the connection.
-		// The nftables library will use it for each netlink operation.
-		runtime.SetFinalizer(fd, func(f *os.File) { f.Close() })
 		opts = append(opts, nftables.WithNetNSFd(int(fd.Fd())))
+
+		data := &NftablesProviderData{
+			Namespace: ns,
+			nsFile:    fd, // prevent GC from closing the fd
+		}
+
+		conn, err := nftables.New(opts...)
+		if err != nil {
+			fd.Close()
+			resp.Diagnostics.AddError(
+				"Failed to create nftables connection",
+				fmt.Sprintf("Could not create netlink connection: %s", err),
+			)
+			return
+		}
+
+		data.Conn = conn
+		resp.DataSourceData = data
+		resp.ResourceData = data
+		return
 	}
 
 	conn, err := nftables.New(opts...)

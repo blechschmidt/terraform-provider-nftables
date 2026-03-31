@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 // CreateTestNamespace creates an isolated network namespace for testing
@@ -70,6 +73,22 @@ func AssertNftNotContains(t *testing.T, ns string, nftArgs []string, unexpected 
 	output := RunNftInNamespace(t, ns, nftArgs...)
 	if strings.Contains(output, unexpected) {
 		t.Errorf("Expected nft output to NOT contain %q, got:\n%s", unexpected, output)
+	}
+}
+
+// CheckNft returns a TestCheckFunc that verifies nft output contains expected string.
+func CheckNft(t *testing.T, ns string, nftArgs []string, expected string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		fullArgs := append([]string{"netns", "exec", ns, "nft"}, nftArgs...)
+		cmd := exec.Command("ip", fullArgs...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("nft command failed: %v\n%s", err, out)
+		}
+		if !strings.Contains(string(out), expected) {
+			return fmt.Errorf("expected nft output to contain %q, got:\n%s", expected, string(out))
+		}
+		return nil
 	}
 }
 
