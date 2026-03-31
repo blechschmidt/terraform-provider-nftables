@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/terraform-providers/terraform-provider-nftables/internal/testutils"
+	"github.com/blechschmidt/terraform-provider-nftables/internal/testutils"
 )
 
 func TestAccChainResource_baseChain(t *testing.T) {

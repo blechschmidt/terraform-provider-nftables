@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"github.com/terraform-providers/terraform-provider-nftables/internal/provider"
+	"github.com/blechschmidt/terraform-provider-nftables/internal/provider"
 )
 
 var version = "dev"
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/terraform-providers/nftables",
+		Address: "registry.terraform.io/blechschmidt/nftables",
 		Debug:   debug,
 	}
 

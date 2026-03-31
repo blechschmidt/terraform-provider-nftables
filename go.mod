@@ -1,4 +1,4 @@
-module github.com/terraform-providers/terraform-provider-nftables
+module github.com/blechschmidt/terraform-provider-nftables
 
 go 1.25.0
 
