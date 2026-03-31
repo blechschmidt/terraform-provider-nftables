@@ -750,6 +750,7 @@ resource "nftables_rule" "jump" {
   table      = nftables_table.test.name
   chain      = nftables_chain.input.name
   expression = "tcp dport 80 jump custom_chain"
+  depends_on = [nftables_chain.custom]
 }`,
 				Check: resource.TestCheckResourceAttrSet("nftables_rule.jump", "handle"),
 			},
@@ -776,6 +777,7 @@ resource "nftables_rule" "goto_rule" {
   table      = nftables_table.test.name
   chain      = nftables_chain.input.name
   expression = "tcp dport 443 goto custom_chain"
+  depends_on = [nftables_chain.custom]
 }`,
 				Check: resource.TestCheckResourceAttrSet("nftables_rule.goto_rule", "handle"),
 			},

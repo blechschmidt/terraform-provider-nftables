@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
@@ -406,49 +405,3 @@ func policyString(p nftables.ChainPolicy) string {
 	}
 }
 
-func parsePriority(s string) (*nftables.ChainPriority, error) {
-	// Try named priorities first
-	named := map[string]int32{
-		"raw":          -300,
-		"mangle":       -150,
-		"dstnat":       -100,
-		"filter":       0,
-		"security":     50,
-		"srcnat":       100,
-		"conntrack":    -200,
-		"out":          100,
-	}
-
-	lower := strings.ToLower(strings.TrimSpace(s))
-
-	// Check for "name + offset" or "name - offset" format
-	for name, base := range named {
-		if strings.HasPrefix(lower, name) {
-			rest := strings.TrimSpace(lower[len(name):])
-			if rest == "" {
-				prio := nftables.ChainPriority(base)
-				return &prio, nil
-			}
-			if rest[0] == '+' || rest[0] == '-' {
-				offset, err := strconv.ParseInt(strings.TrimSpace(rest), 10, 32)
-				if err != nil {
-					return nil, fmt.Errorf("invalid priority offset: %s", rest)
-				}
-				val := int64(base) + offset
-				if val > math.MaxInt32 || val < math.MinInt32 {
-					return nil, fmt.Errorf("priority overflow: %d", val)
-				}
-				prio := nftables.ChainPriority(int32(val))
-				return &prio, nil
-			}
-		}
-	}
-
-	// Try numeric
-	val, err := strconv.ParseInt(lower, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid priority: %q", s)
-	}
-	prio := nftables.ChainPriority(int32(val))
-	return &prio, nil
-}

@@ -130,7 +130,7 @@ func (p *NftablesProvider) Resources(_ context.Context) []func() resource.Resour
 		NewCtTimeoutResource,
 		NewCtExpectationResource,
 		NewSynproxyResource,
-		NewSecmarkResource,
+		// SecmarkResource requires SELinux, omitted from default build
 	}
 }
 

@@ -513,10 +513,10 @@ func encodeSetKey(s string, keyType nftables.SetDatatype) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid MAC: %s", s)
 		}
-		// Pad to 8 bytes
-		result := make([]byte, 8)
-		copy(result, mac)
-		return result, nil
+		// nftables requires 8-byte aligned LL addresses
+		b := make([]byte, 8)
+		copy(b, mac)
+		return b, nil
 	case nftables.TypeInetService:
 		port, err := strconv.ParseUint(s, 10, 16)
 		if err != nil {

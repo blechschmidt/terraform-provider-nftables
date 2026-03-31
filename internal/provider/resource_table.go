@@ -234,21 +234,3 @@ func parseFamily(s string) (nftables.TableFamily, error) {
 	}
 }
 
-func familyString(f nftables.TableFamily) string {
-	switch f {
-	case nftables.TableFamilyIPv4:
-		return "ip"
-	case nftables.TableFamilyIPv6:
-		return "ip6"
-	case nftables.TableFamilyINet:
-		return "inet"
-	case nftables.TableFamilyARP:
-		return "arp"
-	case nftables.TableFamilyBridge:
-		return "bridge"
-	case nftables.TableFamilyNetdev:
-		return "netdev"
-	default:
-		return "unknown"
-	}
-}

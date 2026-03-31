@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"strconv"
@@ -3078,9 +3077,3 @@ func ifnameBytes(name string) []byte {
 	return b
 }
 
-// binaryutil helper for native endian uint16
-func nativeEndianUint16(v uint16) []byte {
-	b := make([]byte, 2)
-	binary.NativeEndian.PutUint16(b, v)
-	return b
-}
