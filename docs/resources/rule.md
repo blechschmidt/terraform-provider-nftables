@@ -7,7 +7,12 @@ description: |-
 
 # nftables_rule (Resource)
 
-Manages an nftables rule within a chain. Rules consist of expressions that match packets and perform actions such as accepting, dropping, rejecting, NAT, logging, and more. The `expression` attribute takes a full nftables rule expression string.
+Manages an nftables rule within a chain. Rules consist of expressions that match packets and perform actions such as accepting, dropping, rejecting, NAT, logging, and more.
+
+Two modes are supported (mutually exclusive):
+
+- **`expression`** (v1): A string in nft syntax, e.g. `"tcp dport 22 accept"`.
+- **`expr`** (v2): A JSON-encoded list of netlink VM statement objects. Each statement has a `type` field and type-specific data. Use `jsonencode()` in HCL. This maps directly to the kernel's netlink expression model and supports the full range of nftables operations.
 
 ## Example Usage
 
@@ -339,28 +344,92 @@ resource "nftables_rule" "positioned" {
 }
 ```
 
+### Using `expr` (v2 - JSON netlink VM statements)
+
+```terraform
+# Accept TCP dport 22 using raw netlink VM expressions
+resource "nftables_rule" "ssh_expr" {
+  family = "inet"
+  table  = "filter"
+  chain  = "input"
+  expr = jsonencode([
+    {type = "meta", key = "l4proto", dreg = 1},
+    {type = "cmp", op = "eq", sreg = 1, data = base64encode("\u0006")},
+    {type = "payload", base = "transport", offset = 2, len = 2, dreg = 1},
+    {type = "cmp", op = "eq", sreg = 1, data = base64encode("\u0000\u0016")},
+    {type = "counter"},
+    {type = "verdict", kind = "accept"}
+  ])
+}
+
+# Masquerade using expr
+resource "nftables_rule" "masq_expr" {
+  family = "ip"
+  table  = "nat"
+  chain  = "postrouting"
+  expr   = jsonencode([{type = "masq"}])
+}
+
+# Rate-limited logging
+resource "nftables_rule" "log_expr" {
+  family = "inet"
+  table  = "filter"
+  chain  = "input"
+  expr = jsonencode([
+    {type = "limit", rate = 5, unit = "second", limit_type = "pkts"},
+    {type = "log", prefix = "INPUT: ", level = "info"},
+    {type = "verdict", kind = "accept"}
+  ])
+}
+```
+
+### Supported `expr` statement types
+
+| Type | Description | Key Fields |
+|------|-------------|------------|
+| `payload` | Load bytes from packet header | `base` (link/network/transport), `offset`, `len`, `dreg` |
+| `cmp` | Compare register value | `op` (eq/neq/lt/lte/gt/gte), `sreg`, `data` (base64) |
+| `meta` | Load packet metadata | `key` (iifname/oifname/l4proto/mark/...), `dreg` |
+| `immediate` | Load constant into register | `dreg`, `data` (base64) |
+| `bitwise` | Bitwise AND/XOR on register | `sreg`, `dreg`, `len`, `mask` (base64), `xor` (base64) |
+| `verdict` | Terminal verdict | `kind` (accept/drop/return/jump/goto), `chain` |
+| `counter` | Packet/byte counter | (none) |
+| `log` | Log to kernel log | `prefix`, `level`, `group`, `snaplen` |
+| `nat` | Source/destination NAT | `nat_type` (snat/dnat), `family`, `reg_addr_min`, `reg_proto_min` |
+| `masq` | Masquerade (auto-SNAT) | `random`, `fully_random`, `persistent` |
+| `reject` | Reject with ICMP | `reject_type`, `code` |
+| `limit` | Rate limiting | `rate`, `unit`, `burst`, `limit_type` (pkts/bytes), `over` |
+| `ct` | Conntrack field load | `key` (state/mark/status/...), `dreg`, `direction` |
+| `lookup` | Set membership test | `sreg`, `set_name`, `invert` |
+| `range` | Range comparison | `op`, `sreg`, `from` (base64), `to` (base64) |
+| `redir` | Redirect (local DNAT) | `reg_proto_min`, `reg_proto_max` |
+| `queue` | Userspace queue | `num`, `flag` |
+| `notrack` | Disable conntrack | (none) |
+| `flow_offload` | Hardware flow offload | `name` |
+| `fib` | FIB lookup | `dreg`, `flag_saddr/daddr/mark/iif/oif`, `result_oif/oifname/addrtype` |
+| `quota` | Byte quota | `bytes`, `over` |
+| `connlimit` | Connection limit | `count` |
+
 ## Schema
 
 ### Required
 
-- `family` (String) The address family of the parent table. Valid values are `ip`, `ip6`, `inet`, `arp`, `bridge`, and `netdev`.
+- `family` (String) The address family of the parent table.
 - `table` (String) The name of the parent table.
 - `chain` (String) The name of the parent chain.
-- `expression` (String) The nftables rule expression. This is the full rule statement as you would write it in nft syntax (excluding the family/table/chain prefix).
 
-### Optional
+### Optional (exactly one required)
 
-- `position` (Number) The handle of an existing rule after which to insert this rule. If not specified, the rule is appended to the end of the chain.
+- `expression` (String) Rule expression in nft syntax (v1). Mutually exclusive with `expr`.
+- `expr` (String) JSON-encoded list of netlink VM expressions (v2). Use `jsonencode()`. Mutually exclusive with `expression`.
+- `position` (Number) Handle of an existing rule after which to insert this rule.
 
 ### Read-Only
 
-- `id` (String) The unique identifier for this resource.
-- `handle` (Number) The handle number assigned to this rule by nftables. This is a unique numeric identifier within the chain.
+- `handle` (Number) The handle number assigned by nftables.
 
 ## Import
 
-Import is supported using the following syntax:
-
 ```shell
-terraform import nftables_rule.allow_ssh inet/filter/input/handle/15
+terraform import nftables_rule.example family|table|chain|handle
 ```

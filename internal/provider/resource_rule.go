@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blechschmidt/terraform-provider-nftables/internal/nftexpr"
 	"github.com/google/nftables"
 	"github.com/google/nftables/binaryutil"
 	"github.com/google/nftables/expr"
@@ -36,6 +37,7 @@ type RuleModel struct {
 	Handle     types.Int64  `tfsdk:"handle"`
 	Position   types.Int64  `tfsdk:"position"`
 	Expression types.String `tfsdk:"expression"`
+	Expr       types.String `tfsdk:"expr"`
 }
 
 func NewRuleResource() resource.Resource {
@@ -48,7 +50,7 @@ func (r *RuleResource) Metadata(_ context.Context, req resource.MetadataRequest,
 
 func (r *RuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages an nftables rule. The expression attribute uses nft rule syntax.",
+		Description: "Manages an nftables rule. Specify either 'expression' (nft syntax string) or 'expr' (JSON netlink VM statement list).",
 		Attributes: map[string]schema.Attribute{
 			"family": schema.StringAttribute{
 				Required:    true,
@@ -83,8 +85,15 @@ func (r *RuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				Description: "Position (handle of the rule before which to insert).",
 			},
 			"expression": schema.StringAttribute{
-				Required:    true,
-				Description: "Rule expression in nft syntax, e.g. 'tcp dport 22 accept', 'ip saddr 10.0.0.0/8 drop'.",
+				Optional:    true,
+				Description: "Rule expression in nft syntax, e.g. 'tcp dport 22 accept'. Mutually exclusive with 'expr'.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"expr": schema.StringAttribute{
+				Optional:    true,
+				Description: "JSON-encoded list of netlink VM expressions. Each element is an object with a 'type' field and type-specific data. Use jsonencode() in HCL. Mutually exclusive with 'expression'.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -121,10 +130,34 @@ func (r *RuleResource) Create(ctx context.Context, req resource.CreateRequest, r
 	table := &nftables.Table{Family: family, Name: plan.Table.ValueString()}
 	chain := &nftables.Chain{Name: plan.Chain.ValueString(), Table: table}
 
-	exprs, err := parseRuleExpression(plan.Expression.ValueString(), family)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to parse expression", err.Error())
+	var exprs []expr.Any
+
+	hasExpr := !plan.Expr.IsNull() && !plan.Expr.IsUnknown()
+	hasExpression := !plan.Expression.IsNull() && !plan.Expression.IsUnknown()
+
+	if !hasExpr && !hasExpression {
+		resp.Diagnostics.AddError("Missing expression", "Either 'expression' or 'expr' must be set.")
 		return
+	}
+	if hasExpr && hasExpression {
+		resp.Diagnostics.AddError("Conflicting attributes", "Only one of 'expression' or 'expr' may be set.")
+		return
+	}
+
+	if hasExpr {
+		var parseErr error
+		exprs, parseErr = nftexpr.FromJSON(plan.Expr.ValueString())
+		if parseErr != nil {
+			resp.Diagnostics.AddError("Failed to parse expr JSON", parseErr.Error())
+			return
+		}
+	} else {
+		var parseErr error
+		exprs, parseErr = parseRuleExpression(plan.Expression.ValueString(), family)
+		if parseErr != nil {
+			resp.Diagnostics.AddError("Failed to parse expression", parseErr.Error())
+			return
+		}
 	}
 
 	rule := &nftables.Rule{
