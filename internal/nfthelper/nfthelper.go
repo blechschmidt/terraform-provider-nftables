@@ -2799,6 +2799,386 @@ func SNATPortRange(addr string, portMin, portMax uint16) []expr.Any {
 //
 //	fmt.Println(nfthelper.ExprString(exprs))
 //	// Output: [*expr.Meta *expr.Cmp *expr.Verdict]
+// ===========================================================================
+// Loaders — load a field into register 1 without comparing.
+// Compose with Lookup() for set membership, or with the existing
+// Match* functions for literal value comparison.
+// ===========================================================================
+
+// LoadIPSaddr loads the IPv4 source address (4 bytes at network header
+// offset 12) into register 1.
+func LoadIPSaddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+	}
+}
+
+// LoadIPDaddr loads the IPv4 destination address into register 1.
+func LoadIPDaddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 16, Len: 4},
+	}
+}
+
+// LoadIPProtocol loads the IPv4 protocol field into register 1.
+func LoadIPProtocol() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 9, Len: 1},
+	}
+}
+
+// LoadIPTTL loads the IPv4 TTL field into register 1.
+func LoadIPTTL() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 1},
+	}
+}
+
+// LoadIPLength loads the IPv4 total length field into register 1.
+func LoadIPLength() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 2, Len: 2},
+	}
+}
+
+// LoadIP6Saddr loads the IPv6 source address (16 bytes at offset 8) into register 1.
+func LoadIP6Saddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 16},
+	}
+}
+
+// LoadIP6Daddr loads the IPv6 destination address into register 1.
+func LoadIP6Daddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 24, Len: 16},
+	}
+}
+
+// LoadIP6NextHdr loads the IPv6 next header field into register 1.
+func LoadIP6NextHdr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 6, Len: 1},
+	}
+}
+
+// LoadIP6HopLimit loads the IPv6 hop limit field into register 1.
+func LoadIP6HopLimit() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 7, Len: 1},
+	}
+}
+
+// LoadTCPDport loads the TCP destination port into register 1.
+func LoadTCPDport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+	}
+}
+
+// LoadTCPSport loads the TCP source port into register 1.
+func LoadTCPSport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 0, Len: 2},
+	}
+}
+
+// LoadTCPFlags loads the TCP flags byte into register 1.
+func LoadTCPFlags() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 13, Len: 1},
+	}
+}
+
+// LoadUDPDport loads the UDP destination port into register 1.
+func LoadUDPDport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+	}
+}
+
+// LoadUDPSport loads the UDP source port into register 1.
+func LoadUDPSport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 0, Len: 2},
+	}
+}
+
+// LoadSCTPDport loads the SCTP destination port into register 1.
+func LoadSCTPDport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+	}
+}
+
+// LoadSCTPSport loads the SCTP source port into register 1.
+func LoadSCTPSport() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 0, Len: 2},
+	}
+}
+
+// LoadEtherSaddr loads the Ethernet source MAC address into register 1.
+func LoadEtherSaddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseLLHeader, Offset: 6, Len: 6},
+	}
+}
+
+// LoadEtherDaddr loads the Ethernet destination MAC address into register 1.
+func LoadEtherDaddr() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseLLHeader, Offset: 0, Len: 6},
+	}
+}
+
+// LoadEtherType loads the Ethernet type field into register 1.
+func LoadEtherType() []expr.Any {
+	return []expr.Any{
+		&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseLLHeader, Offset: 12, Len: 2},
+	}
+}
+
+// LoadMetaIifname loads the input interface name into register 1.
+func LoadMetaIifname() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
+	}
+}
+
+// LoadMetaOifname loads the output interface name into register 1.
+func LoadMetaOifname() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
+	}
+}
+
+// LoadMetaMark loads the packet mark into register 1.
+func LoadMetaMark() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyMARK, Register: 1},
+	}
+}
+
+// LoadMetaNfproto loads the nfproto (layer 3 protocol family) into register 1.
+func LoadMetaNfproto() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+	}
+}
+
+// LoadMetaL4proto loads the layer 4 protocol into register 1.
+func LoadMetaL4proto() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+	}
+}
+
+// LoadMetaProtocol loads the EtherType protocol into register 1.
+func LoadMetaProtocol() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyPROTOCOL, Register: 1},
+	}
+}
+
+// LoadMetaIiftype loads the input interface type into register 1.
+func LoadMetaIiftype() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyIIFTYPE, Register: 1},
+	}
+}
+
+// LoadMetaOiftype loads the output interface type into register 1.
+func LoadMetaOiftype() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyOIFTYPE, Register: 1},
+	}
+}
+
+// LoadMetaPkttype loads the packet type into register 1.
+func LoadMetaPkttype() []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyPKTTYPE, Register: 1},
+	}
+}
+
+// LoadCTState loads the conntrack state into register 1.
+func LoadCTState() []expr.Any {
+	return []expr.Any{
+		&expr.Ct{Key: expr.CtKeySTATE, Register: 1},
+	}
+}
+
+// LoadCTMark loads the conntrack mark into register 1.
+func LoadCTMark() []expr.Any {
+	return []expr.Any{
+		&expr.Ct{Key: expr.CtKeyMARK, Register: 1},
+	}
+}
+
+// LoadCTStatus loads the conntrack status into register 1.
+func LoadCTStatus() []expr.Any {
+	return []expr.Any{
+		&expr.Ct{Key: expr.CtKeySTATUS, Register: 1},
+	}
+}
+
+// ===========================================================================
+// Lookup — check if register 1 value is in a named set
+// ===========================================================================
+
+// Lookup checks if the value in register 1 is a member of the named set.
+// Use after a Load* function.
+//
+// Example:
+//
+//	exprs := nfthelper.Combine(
+//	    nfthelper.LoadIPSaddr(),
+//	    nfthelper.Lookup("blocked_ips"),
+//	    nfthelper.Drop(),
+//	)
+func Lookup(setName string) []expr.Any {
+	return []expr.Any{
+		&expr.Lookup{SourceRegister: 1, SetName: setName},
+	}
+}
+
+// LookupInv checks if the value in register 1 is NOT in the named set
+// (inverted lookup).
+//
+// Example:
+//
+//	exprs := nfthelper.Combine(
+//	    nfthelper.LoadIPSaddr(),
+//	    nfthelper.LookupInv("allowed_ips"),
+//	    nfthelper.Drop(),
+//	)
+func LookupInv(setName string) []expr.Any {
+	return []expr.Any{
+		&expr.Lookup{SourceRegister: 1, SetName: setName, Invert: true},
+	}
+}
+
+// ===========================================================================
+// Comparisons — compare register 1 value against constants or CIDRs.
+// Use after a Load* function.
+// ===========================================================================
+
+// CmpEq compares register 1 for equality with the given big-endian bytes.
+// The data parameter is raw bytes (e.g., a 4-byte IPv4 address or 2-byte port).
+func CmpEq(data []byte) []expr.Any {
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: data},
+	}
+}
+
+// CmpNeq compares register 1 for inequality.
+func CmpNeq(data []byte) []expr.Any {
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpNeq, Register: 1, Data: data},
+	}
+}
+
+// CmpIPv4 compares register 1 against an IPv4 address or CIDR.
+// For a single IP, generates a direct comparison.
+// For a CIDR, generates bitwise mask + comparison.
+//
+// Example:
+//
+//	exprs := nfthelper.Combine(
+//	    nfthelper.LoadIPSaddr(),
+//	    nfthelper.CmpIPv4("10.0.0.0/8"),
+//	    nfthelper.Drop(),
+//	)
+func CmpIPv4(addr string) []expr.Any {
+	if strings.Contains(addr, "/") {
+		_, ipNet, err := net.ParseCIDR(addr)
+		if err != nil {
+			return nil
+		}
+		ip := ipNet.IP.To4()
+		mask := net.IP(ipNet.Mask).To4()
+		if ip == nil || mask == nil {
+			return nil
+		}
+		return []expr.Any{
+			&expr.Bitwise{
+				SourceRegister: 1,
+				DestRegister:   1,
+				Len:            4,
+				Mask:           []byte(mask),
+				Xor:            []byte{0, 0, 0, 0},
+			},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte(ip)},
+		}
+	}
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return nil
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte(ip4)},
+	}
+}
+
+// CmpIPv6 compares register 1 against an IPv6 address or CIDR.
+func CmpIPv6(addr string) []expr.Any {
+	if strings.Contains(addr, "/") {
+		_, ipNet, err := net.ParseCIDR(addr)
+		if err != nil {
+			return nil
+		}
+		ip := ipNet.IP.To16()
+		mask := make([]byte, 16)
+		copy(mask, ipNet.Mask)
+		if ip == nil {
+			return nil
+		}
+		return []expr.Any{
+			&expr.Bitwise{
+				SourceRegister: 1,
+				DestRegister:   1,
+				Len:            16,
+				Mask:           mask,
+				Xor:            make([]byte, 16),
+			},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte(ip)},
+		}
+	}
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: ip.To16()},
+	}
+}
+
+// CmpPort compares register 1 against a big-endian port number.
+func CmpPort(port uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: binaryutil.BigEndian.PutUint16(port)},
+	}
+}
+
+// CmpU8 compares register 1 against a single byte.
+func CmpU8(val uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{val}},
+	}
+}
+
+// CmpU32Native compares register 1 against a native-endian uint32.
+func CmpU32Native(val uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: binaryutil.NativeEndian.PutUint32(val)},
+	}
+}
+
 func ExprString(exprs []expr.Any) string {
 	parts := make([]string, len(exprs))
 	for i, e := range exprs {

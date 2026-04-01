@@ -99,6 +99,43 @@ func All() []func() function.Function {
 		NewMatchCTMarkFunction,
 		NewMatchCTStatusFunction,
 		NewMatchCTDirectionFunction,
+		// Loaders — load field into register without comparing
+		NewLoadIPSaddrFunction,
+		NewLoadIPDaddrFunction,
+		NewLoadIPProtocolFunction,
+		NewLoadIPTTLFunction,
+		NewLoadIPLengthFunction,
+		NewLoadIP6SaddrFunction,
+		NewLoadIP6DaddrFunction,
+		NewLoadIP6NextHdrFunction,
+		NewLoadIP6HopLimitFunction,
+		NewLoadTCPDportFunction,
+		NewLoadTCPSportFunction,
+		NewLoadTCPFlagsFunction,
+		NewLoadUDPDportFunction,
+		NewLoadUDPSportFunction,
+		NewLoadSCTPDportFunction,
+		NewLoadSCTPSportFunction,
+		NewLoadEtherSaddrFunction,
+		NewLoadEtherDaddrFunction,
+		NewLoadEtherTypeFunction,
+		NewLoadMetaIifnameFunction,
+		NewLoadMetaOifnameFunction,
+		NewLoadMetaMarkFunction,
+		NewLoadMetaNfprotoFunction,
+		NewLoadMetaL4protoFunction,
+		NewLoadMetaProtocolFunction,
+		NewLoadMetaPkttypeFunction,
+		NewLoadCTStateFunction,
+		NewLoadCTMarkFunction,
+		NewLoadCTStatusFunction,
+		// Lookup — set membership test on register
+		NewLookupFunction,
+		NewLookupInvFunction,
+		// Comparisons — compare register value
+		NewCmpIPv4Function,
+		NewCmpIPv6Function,
+		NewCmpPortFunction,
 	}
 }
 
@@ -810,6 +847,123 @@ func (f *MatchCTStatusFunction) Run(ctx context.Context, req function.RunRequest
 
 func NewMatchCTDirectionFunction() function.Function {
 	return &stringArgFunc{name: "match_ct_direction", summary: "Match conntrack direction", paramName: "direction", paramDesc: "Direction: original or reply", fn: nfthelper.MatchCTDirection}
+}
+
+// ---------------------------------------------------------------------------
+// Loaders — load a field into register 1 without comparing
+// ---------------------------------------------------------------------------
+
+func NewLoadIPSaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ip_saddr", summary: "Load IPv4 source address into register", fn: nfthelper.LoadIPSaddr}
+}
+func NewLoadIPDaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ip_daddr", summary: "Load IPv4 destination address into register", fn: nfthelper.LoadIPDaddr}
+}
+func NewLoadIPProtocolFunction() function.Function {
+	return &noArgFunc{name: "load_ip_protocol", summary: "Load IP protocol field into register", fn: nfthelper.LoadIPProtocol}
+}
+func NewLoadIPTTLFunction() function.Function {
+	return &noArgFunc{name: "load_ip_ttl", summary: "Load IP TTL into register", fn: nfthelper.LoadIPTTL}
+}
+func NewLoadIPLengthFunction() function.Function {
+	return &noArgFunc{name: "load_ip_length", summary: "Load IP total length into register", fn: nfthelper.LoadIPLength}
+}
+func NewLoadIP6SaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ip6_saddr", summary: "Load IPv6 source address into register", fn: nfthelper.LoadIP6Saddr}
+}
+func NewLoadIP6DaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ip6_daddr", summary: "Load IPv6 destination address into register", fn: nfthelper.LoadIP6Daddr}
+}
+func NewLoadIP6NextHdrFunction() function.Function {
+	return &noArgFunc{name: "load_ip6_nexthdr", summary: "Load IPv6 next header into register", fn: nfthelper.LoadIP6NextHdr}
+}
+func NewLoadIP6HopLimitFunction() function.Function {
+	return &noArgFunc{name: "load_ip6_hoplimit", summary: "Load IPv6 hop limit into register", fn: nfthelper.LoadIP6HopLimit}
+}
+func NewLoadTCPDportFunction() function.Function {
+	return &noArgFunc{name: "load_tcp_dport", summary: "Load TCP destination port into register", fn: nfthelper.LoadTCPDport}
+}
+func NewLoadTCPSportFunction() function.Function {
+	return &noArgFunc{name: "load_tcp_sport", summary: "Load TCP source port into register", fn: nfthelper.LoadTCPSport}
+}
+func NewLoadTCPFlagsFunction() function.Function {
+	return &noArgFunc{name: "load_tcp_flags", summary: "Load TCP flags byte into register", fn: nfthelper.LoadTCPFlags}
+}
+func NewLoadUDPDportFunction() function.Function {
+	return &noArgFunc{name: "load_udp_dport", summary: "Load UDP destination port into register", fn: nfthelper.LoadUDPDport}
+}
+func NewLoadUDPSportFunction() function.Function {
+	return &noArgFunc{name: "load_udp_sport", summary: "Load UDP source port into register", fn: nfthelper.LoadUDPSport}
+}
+func NewLoadSCTPDportFunction() function.Function {
+	return &noArgFunc{name: "load_sctp_dport", summary: "Load SCTP destination port into register", fn: nfthelper.LoadSCTPDport}
+}
+func NewLoadSCTPSportFunction() function.Function {
+	return &noArgFunc{name: "load_sctp_sport", summary: "Load SCTP source port into register", fn: nfthelper.LoadSCTPSport}
+}
+func NewLoadEtherSaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ether_saddr", summary: "Load Ethernet source MAC into register", fn: nfthelper.LoadEtherSaddr}
+}
+func NewLoadEtherDaddrFunction() function.Function {
+	return &noArgFunc{name: "load_ether_daddr", summary: "Load Ethernet destination MAC into register", fn: nfthelper.LoadEtherDaddr}
+}
+func NewLoadEtherTypeFunction() function.Function {
+	return &noArgFunc{name: "load_ether_type", summary: "Load Ethernet type into register", fn: nfthelper.LoadEtherType}
+}
+func NewLoadMetaIifnameFunction() function.Function {
+	return &noArgFunc{name: "load_meta_iifname", summary: "Load input interface name into register", fn: nfthelper.LoadMetaIifname}
+}
+func NewLoadMetaOifnameFunction() function.Function {
+	return &noArgFunc{name: "load_meta_oifname", summary: "Load output interface name into register", fn: nfthelper.LoadMetaOifname}
+}
+func NewLoadMetaMarkFunction() function.Function {
+	return &noArgFunc{name: "load_meta_mark", summary: "Load packet mark into register", fn: nfthelper.LoadMetaMark}
+}
+func NewLoadMetaNfprotoFunction() function.Function {
+	return &noArgFunc{name: "load_meta_nfproto", summary: "Load nfproto into register", fn: nfthelper.LoadMetaNfproto}
+}
+func NewLoadMetaL4protoFunction() function.Function {
+	return &noArgFunc{name: "load_meta_l4proto", summary: "Load L4 protocol into register", fn: nfthelper.LoadMetaL4proto}
+}
+func NewLoadMetaProtocolFunction() function.Function {
+	return &noArgFunc{name: "load_meta_protocol", summary: "Load EtherType protocol into register", fn: nfthelper.LoadMetaProtocol}
+}
+func NewLoadMetaPkttypeFunction() function.Function {
+	return &noArgFunc{name: "load_meta_pkttype", summary: "Load packet type into register", fn: nfthelper.LoadMetaPkttype}
+}
+func NewLoadCTStateFunction() function.Function {
+	return &noArgFunc{name: "load_ct_state", summary: "Load conntrack state into register", fn: nfthelper.LoadCTState}
+}
+func NewLoadCTMarkFunction() function.Function {
+	return &noArgFunc{name: "load_ct_mark", summary: "Load conntrack mark into register", fn: nfthelper.LoadCTMark}
+}
+func NewLoadCTStatusFunction() function.Function {
+	return &noArgFunc{name: "load_ct_status", summary: "Load conntrack status into register", fn: nfthelper.LoadCTStatus}
+}
+
+// ---------------------------------------------------------------------------
+// Lookup — set membership test on register value
+// ---------------------------------------------------------------------------
+
+func NewLookupFunction() function.Function {
+	return &stringArgFunc{name: "lookup", summary: "Check if register value is in named set", paramName: "set_name", paramDesc: "Name of the nftables set", fn: nfthelper.Lookup}
+}
+func NewLookupInvFunction() function.Function {
+	return &stringArgFunc{name: "lookup_inv", summary: "Check if register value is NOT in named set", paramName: "set_name", paramDesc: "Name of the nftables set", fn: nfthelper.LookupInv}
+}
+
+// ---------------------------------------------------------------------------
+// Comparisons — compare register value against constants or CIDRs
+// ---------------------------------------------------------------------------
+
+func NewCmpIPv4Function() function.Function {
+	return &stringArgFunc{name: "cmp_ipv4", summary: "Compare register against IPv4 address or CIDR", paramName: "addr", paramDesc: "IPv4 address or CIDR (e.g., 10.0.0.0/8)", fn: nfthelper.CmpIPv4}
+}
+func NewCmpIPv6Function() function.Function {
+	return &stringArgFunc{name: "cmp_ipv6", summary: "Compare register against IPv6 address or CIDR", paramName: "addr", paramDesc: "IPv6 address or CIDR (e.g., fd00::/8)", fn: nfthelper.CmpIPv6}
+}
+func NewCmpPortFunction() function.Function {
+	return &numberArgFunc{name: "cmp_port", summary: "Compare register against port number", paramName: "port", paramDesc: "Port number", fn: func(v int64) []expr.Any { return nfthelper.CmpPort(uint16(v)) }}
 }
 
 // Ensure all generic function types implement the interface
