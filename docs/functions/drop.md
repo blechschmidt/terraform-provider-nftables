@@ -9,6 +9,20 @@ description: |-
 
 Drop the packet
 
+## Example Usage
+
+```terraform
+resource "nftables_rule" "block_rfc1918" {
+  family = "inet"
+  table  = "filter"
+  chain  = "input"
+  expr = provider::nftables::combine(
+    provider::nftables::match_ip_saddr("192.168.0.0/16"),
+    provider::nftables::drop(),
+  )
+}
+```
+
 ## Signature
 
 ```text

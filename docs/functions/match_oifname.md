@@ -9,6 +9,20 @@ description: |-
 
 Match output interface name
 
+## Example Usage
+
+```terraform
+resource "nftables_rule" "outbound" {
+  family = "ip"
+  table  = "nat"
+  chain  = "postrouting"
+  expr = provider::nftables::combine(
+    provider::nftables::match_oifname("eth0"),
+    provider::nftables::masquerade(),
+  )
+}
+```
+
 ## Signature
 
 ```text
@@ -17,4 +31,4 @@ match_oifname(name string) string
 
 ## Arguments
 
-1. `name` (String) Interface name
+1. `name` (String) Interface name.

@@ -9,6 +9,20 @@ description: |-
 
 Reject with TCP RST
 
+## Example Usage
+
+```terraform
+resource "nftables_rule" "tcp_rst" {
+  family = "inet"
+  table  = "filter"
+  chain  = "input"
+  expr = provider::nftables::combine(
+    provider::nftables::match_tcp_dport(80),
+    provider::nftables::reject_tcp_reset(),
+  )
+}
+```
+
 ## Signature
 
 ```text
