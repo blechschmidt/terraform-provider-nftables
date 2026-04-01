@@ -1118,6 +1118,1677 @@ func FlowOffload(name string) []expr.Any {
 }
 
 // ---------------------------------------------------------------------------
+// Helper: protocol name to byte
+// ---------------------------------------------------------------------------
+
+// parseProtoHelper maps a protocol name to its IP protocol number.
+// Supported names: tcp, udp, icmp, icmpv6, sctp, dccp, gre, esp, ah, comp,
+// udplite. Returns 0 if the name is unknown.
+func parseProtoHelper(s string) byte {
+	protos := map[string]byte{
+		"tcp":     6,
+		"udp":     17,
+		"icmp":    1,
+		"icmpv6":  58,
+		"sctp":    132,
+		"dccp":    33,
+		"gre":     47,
+		"esp":     50,
+		"ah":      51,
+		"comp":    108,
+		"udplite": 136,
+	}
+	if v, ok := protos[strings.ToLower(s)]; ok {
+		return v
+	}
+	return 0
+}
+
+// ---------------------------------------------------------------------------
+// Helper: L4 protocol + payload match
+// ---------------------------------------------------------------------------
+
+// protoAndPayload returns expressions that first match the L4 protocol via
+// meta l4proto and then compare a transport-header payload field against the
+// given data bytes.
+func protoAndPayload(proto byte, offset, length uint32, data []byte) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{proto}},
+		&expr.Payload{Base: expr.PayloadBaseTransportHeader, Offset: offset, Len: length, DestRegister: 1},
+		&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: data},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IP header field matchers
+// ---------------------------------------------------------------------------
+
+// MatchIPTTL returns expressions that match the IPv4 TTL field (1 byte at
+// network header offset 8).
+func MatchIPTTL(ttl uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       8,
+			Len:          1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{ttl},
+		},
+	}
+}
+
+// MatchIPDSCP returns expressions that match the IPv4 DSCP field. The DSCP
+// value occupies the upper 6 bits of the TOS byte (offset 1, len 1). A
+// bitwise mask of 0xfc is applied and the result is compared against the
+// dscp value shifted left by 2.
+func MatchIPDSCP(dscp uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       1,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{0xfc},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{dscp << 2},
+		},
+	}
+}
+
+// MatchIPLength returns expressions that match the IPv4 total length field
+// (2 bytes at network header offset 2, big-endian).
+func MatchIPLength(length uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       2,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(length),
+		},
+	}
+}
+
+// MatchIPId returns expressions that match the IPv4 identification field
+// (2 bytes at network header offset 4, big-endian).
+func MatchIPId(id uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       4,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(id),
+		},
+	}
+}
+
+// MatchIPFragOff returns expressions that match the IPv4 fragment offset field
+// (2 bytes at network header offset 6, big-endian).
+func MatchIPFragOff(fragoff uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       6,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(fragoff),
+		},
+	}
+}
+
+// MatchIPVersion returns expressions that match the IPv4 version nibble (upper
+// 4 bits of the first byte at network header offset 0). A bitwise mask of 0xf0
+// is applied before comparison.
+func MatchIPVersion(version uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{0xf0},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{version << 4},
+		},
+	}
+}
+
+// MatchIPHdrLength returns expressions that match the IPv4 header length nibble
+// (lower 4 bits of the first byte at network header offset 0). A bitwise mask
+// of 0x0f is applied before comparison.
+func MatchIPHdrLength(hdrlength uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{0x0f},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{hdrlength},
+		},
+	}
+}
+
+// MatchIPChecksum returns expressions that match the IPv4 header checksum field
+// (2 bytes at network header offset 10, big-endian).
+func MatchIPChecksum(checksum uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       10,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(checksum),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IPv6 header field matchers
+// ---------------------------------------------------------------------------
+
+// MatchIP6HopLimit returns expressions that match the IPv6 hop limit field
+// (1 byte at network header offset 7).
+func MatchIP6HopLimit(hoplimit uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       7,
+			Len:          1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{hoplimit},
+		},
+	}
+}
+
+// MatchIP6FlowLabel returns expressions that match the IPv6 flow label field.
+// The flow label is the lower 20 bits of the first 4 bytes of the IPv6 header
+// (offset 0, len 4). A bitwise mask of 0x000fffff is applied (big-endian).
+func MatchIP6FlowLabel(flowlabel uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          4,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            4,
+			Mask:           []byte{0x00, 0x0f, 0xff, 0xff},
+			Xor:            []byte{0x00, 0x00, 0x00, 0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint32(flowlabel),
+		},
+	}
+}
+
+// MatchIP6NextHdr returns expressions that match the IPv6 next header field
+// (1 byte at network header offset 6) using a protocol name such as "tcp",
+// "udp", "icmpv6", etc.
+func MatchIP6NextHdr(proto string) []expr.Any {
+	p := parseProtoHelper(proto)
+	if p == 0 {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       6,
+			Len:          1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{p},
+		},
+	}
+}
+
+// MatchIP6Length returns expressions that match the IPv6 payload length field
+// (2 bytes at network header offset 4, big-endian).
+func MatchIP6Length(length uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       4,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(length),
+		},
+	}
+}
+
+// MatchIP6Version returns expressions that match the IPv6 version nibble (upper
+// 4 bits of the first byte at network header offset 0). A bitwise mask of 0xf0
+// is applied before comparison.
+func MatchIP6Version(version uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{0xf0},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{version << 4},
+		},
+	}
+}
+
+// MatchIP6DSCP returns expressions that match the IPv6 DSCP field. The DSCP
+// value is encoded in bits 4-9 of the first 2 bytes of the IPv6 header
+// (offset 0, len 2). A big-endian mask of 0x0fc0 is applied and the result
+// is compared against the dscp value shifted left by 6.
+func MatchIP6DSCP(dscp uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          2,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            2,
+			Mask:           []byte{0x0f, 0xc0},
+			Xor:            []byte{0x00, 0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(uint16(dscp) << 6),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TCP field matchers
+// ---------------------------------------------------------------------------
+
+// tcpFlagBits maps TCP flag names to their bit positions in the flags byte.
+var tcpFlagBits = map[string]byte{
+	"fin": 0x01,
+	"syn": 0x02,
+	"rst": 0x04,
+	"psh": 0x08,
+	"ack": 0x10,
+	"urg": 0x20,
+	"ecn": 0x40,
+	"cwr": 0x80,
+}
+
+// MatchTCPFlags returns expressions that match TCP flags. The flags parameter
+// is a "|"-separated list of flag names: fin, syn, rst, psh, ack, urg, ecn,
+// cwr. A bitwise mask is built from the specified flags and compared against
+// the TCP flags byte (offset 13, len 1).
+//
+// Example:
+//
+//	exprs := nfthelper.MatchTCPFlags("syn|ack")
+func MatchTCPFlags(flags string) []expr.Any {
+	var mask byte
+	for _, f := range strings.Split(flags, "|") {
+		if bit, ok := tcpFlagBits[strings.TrimSpace(strings.ToLower(f))]; ok {
+			mask |= bit
+		}
+	}
+	if mask == 0 {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       13,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{mask},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{mask},
+		},
+	}
+}
+
+// MatchTCPSequence returns expressions that match the TCP sequence number
+// (4 bytes at transport header offset 4, big-endian).
+func MatchTCPSequence(seq uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       4,
+			Len:          4,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint32(seq),
+		},
+	}
+}
+
+// MatchTCPAckSeq returns expressions that match the TCP acknowledgment
+// sequence number (4 bytes at transport header offset 8, big-endian).
+func MatchTCPAckSeq(ackseq uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       8,
+			Len:          4,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint32(ackseq),
+		},
+	}
+}
+
+// MatchTCPDoff returns expressions that match the TCP data offset field (upper
+// nibble of the byte at transport header offset 12). A bitwise mask of 0xf0 is
+// applied before comparison.
+func MatchTCPDoff(doff uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       12,
+			Len:          1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            1,
+			Mask:           []byte{0xf0},
+			Xor:            []byte{0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{doff << 4},
+		},
+	}
+}
+
+// MatchTCPWindow returns expressions that match the TCP window size field
+// (2 bytes at transport header offset 14, big-endian).
+func MatchTCPWindow(window uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       14,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(window),
+		},
+	}
+}
+
+// MatchTCPChecksum returns expressions that match the TCP checksum field
+// (2 bytes at transport header offset 16, big-endian).
+func MatchTCPChecksum(checksum uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       16,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(checksum),
+		},
+	}
+}
+
+// MatchTCPUrgPtr returns expressions that match the TCP urgent pointer field
+// (2 bytes at transport header offset 18, big-endian).
+func MatchTCPUrgPtr(urgptr uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       18,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(urgptr),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// UDP field matchers
+// ---------------------------------------------------------------------------
+
+// MatchUDPLength returns expressions that match the UDP length field (2 bytes
+// at transport header offset 4, big-endian).
+func MatchUDPLength(length uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       4,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(length),
+		},
+	}
+}
+
+// MatchUDPChecksum returns expressions that match the UDP checksum field
+// (2 bytes at transport header offset 6, big-endian).
+func MatchUDPChecksum(checksum uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       6,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(checksum),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ICMP field matchers
+// ---------------------------------------------------------------------------
+
+// MatchICMPCode returns expressions that match the ICMPv4 code field (1 byte
+// at transport header offset 1).
+func MatchICMPCode(code uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       1,
+			Len:          1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{code},
+		},
+	}
+}
+
+// MatchICMPId returns expressions that match the ICMPv4 identifier field
+// (2 bytes at transport header offset 4, big-endian).
+func MatchICMPId(id uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       4,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(id),
+		},
+	}
+}
+
+// MatchICMPSequence returns expressions that match the ICMPv4 sequence number
+// field (2 bytes at transport header offset 6, big-endian).
+func MatchICMPSequence(seq uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       6,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(seq),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ICMPv6 field matchers
+// ---------------------------------------------------------------------------
+
+// MatchICMPv6Code returns expressions that match the ICMPv6 code field (1 byte
+// at transport header offset 1).
+func MatchICMPv6Code(code uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       1,
+			Len:          1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{code},
+		},
+	}
+}
+
+// MatchICMPv6Id returns expressions that match the ICMPv6 identifier field
+// (2 bytes at transport header offset 4, big-endian).
+func MatchICMPv6Id(id uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       4,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(id),
+		},
+	}
+}
+
+// MatchICMPv6Sequence returns expressions that match the ICMPv6 sequence number
+// field (2 bytes at transport header offset 6, big-endian).
+func MatchICMPv6Sequence(seq uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseTransportHeader,
+			Offset:       6,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(seq),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Ethernet matchers
+// ---------------------------------------------------------------------------
+
+// MatchEtherSaddr returns expressions that match the Ethernet source MAC
+// address (6 bytes at link-layer header offset 6).
+func MatchEtherSaddr(mac string) []expr.Any {
+	hw, err := net.ParseMAC(mac)
+	if err != nil || len(hw) != 6 {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseLLHeader,
+			Offset:       6,
+			Len:          6,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte(hw),
+		},
+	}
+}
+
+// MatchEtherDaddr returns expressions that match the Ethernet destination MAC
+// address (6 bytes at link-layer header offset 0).
+func MatchEtherDaddr(mac string) []expr.Any {
+	hw, err := net.ParseMAC(mac)
+	if err != nil || len(hw) != 6 {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseLLHeader,
+			Offset:       0,
+			Len:          6,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte(hw),
+		},
+	}
+}
+
+// MatchEtherType returns expressions that match the EtherType field (2 bytes
+// at link-layer header offset 12, big-endian).
+func MatchEtherType(ethtype uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseLLHeader,
+			Offset:       12,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(ethtype),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// VLAN matchers
+// ---------------------------------------------------------------------------
+
+// MatchVLANId returns expressions that match the 802.1Q VLAN ID (lower 12 bits
+// of the 2-byte TCI field at link-layer header offset 14). A big-endian mask
+// of 0x0fff is applied before comparison.
+func MatchVLANId(id uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseLLHeader,
+			Offset:       14,
+			Len:          2,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            2,
+			Mask:           []byte{0x0f, 0xff},
+			Xor:            []byte{0x00, 0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(id),
+		},
+	}
+}
+
+// MatchVLANPcp returns expressions that match the 802.1Q VLAN PCP (priority
+// code point), which occupies the upper 3 bits of the 2-byte TCI field at
+// link-layer header offset 14. A big-endian mask of 0xe000 is applied and the
+// result is compared against the pcp value shifted left by 13.
+func MatchVLANPcp(pcp uint8) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseLLHeader,
+			Offset:       14,
+			Len:          2,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            2,
+			Mask:           []byte{0xe0, 0x00},
+			Xor:            []byte{0x00, 0x00},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(uint16(pcp) << 13),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ARP matchers
+// ---------------------------------------------------------------------------
+
+// arpOperations maps ARP operation names to their numeric values.
+var arpOperations = map[string]uint16{
+	"request":   1,
+	"reply":     2,
+	"rrequest":  3,
+	"rreply":    4,
+	"inrequest": 8,
+	"inreply":   9,
+	"nak":       10,
+}
+
+// MatchARPOperation returns expressions that match the ARP operation field
+// (2 bytes at network header offset 6, big-endian). The op parameter is a
+// name such as "request", "reply", "rrequest", "rreply", "inrequest",
+// "inreply", or "nak".
+func MatchARPOperation(op string) []expr.Any {
+	code, ok := arpOperations[strings.ToLower(op)]
+	if !ok {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       6,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(code),
+		},
+	}
+}
+
+// MatchARPHtype returns expressions that match the ARP hardware type field
+// (2 bytes at network header offset 0, big-endian).
+func MatchARPHtype(htype uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       0,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(htype),
+		},
+	}
+}
+
+// MatchARPPtype returns expressions that match the ARP protocol type field
+// (2 bytes at network header offset 2, big-endian).
+func MatchARPPtype(ptype uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Payload{
+			DestRegister: 1,
+			Base:         expr.PayloadBaseNetworkHeader,
+			Offset:       2,
+			Len:          2,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(ptype),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SCTP matchers
+// ---------------------------------------------------------------------------
+
+// MatchSCTPDport returns expressions that match the SCTP destination port
+// (transport offset 2, len 2), preceded by a meta l4proto match for SCTP (132).
+func MatchSCTPDport(port uint16) []expr.Any {
+	return protoAndPayload(132, 2, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// MatchSCTPSport returns expressions that match the SCTP source port
+// (transport offset 0, len 2), preceded by a meta l4proto match for SCTP (132).
+func MatchSCTPSport(port uint16) []expr.Any {
+	return protoAndPayload(132, 0, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// MatchSCTPVtag returns expressions that match the SCTP verification tag
+// (transport offset 4, len 4), preceded by a meta l4proto match for SCTP (132).
+func MatchSCTPVtag(vtag uint32) []expr.Any {
+	return protoAndPayload(132, 4, 4, binaryutil.BigEndian.PutUint32(vtag))
+}
+
+// ---------------------------------------------------------------------------
+// DCCP matchers
+// ---------------------------------------------------------------------------
+
+// dccpTypes maps DCCP packet type names to their numeric values.
+var dccpTypes = map[string]byte{
+	"request":  0,
+	"response": 1,
+	"data":     2,
+	"ack":      3,
+	"dataack":  4,
+	"closereq": 5,
+	"close":    6,
+	"reset":    7,
+	"sync":     8,
+	"syncack":  9,
+}
+
+// MatchDCCPDport returns expressions that match the DCCP destination port
+// (transport offset 2, len 2), preceded by a meta l4proto match for DCCP (33).
+func MatchDCCPDport(port uint16) []expr.Any {
+	return protoAndPayload(33, 2, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// MatchDCCPSport returns expressions that match the DCCP source port
+// (transport offset 0, len 2), preceded by a meta l4proto match for DCCP (33).
+func MatchDCCPSport(port uint16) []expr.Any {
+	return protoAndPayload(33, 0, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// MatchDCCPType returns expressions that match the DCCP packet type field
+// (transport offset 8, len 1), preceded by a meta l4proto match for DCCP (33).
+// The typeName parameter is one of: request, response, data, ack, dataack,
+// closereq, close, reset, sync, syncack.
+func MatchDCCPType(typeName string) []expr.Any {
+	code, ok := dccpTypes[strings.ToLower(typeName)]
+	if !ok {
+		return nil
+	}
+	return protoAndPayload(33, 8, 1, []byte{code})
+}
+
+// ---------------------------------------------------------------------------
+// ESP matchers
+// ---------------------------------------------------------------------------
+
+// MatchESPSpi returns expressions that match the ESP SPI field (transport
+// offset 0, len 4), preceded by a meta l4proto match for ESP (50).
+func MatchESPSpi(spi uint32) []expr.Any {
+	return protoAndPayload(50, 0, 4, binaryutil.BigEndian.PutUint32(spi))
+}
+
+// MatchESPSequence returns expressions that match the ESP sequence number field
+// (transport offset 4, len 4), preceded by a meta l4proto match for ESP (50).
+func MatchESPSequence(seq uint32) []expr.Any {
+	return protoAndPayload(50, 4, 4, binaryutil.BigEndian.PutUint32(seq))
+}
+
+// ---------------------------------------------------------------------------
+// AH matchers
+// ---------------------------------------------------------------------------
+
+// MatchAHSpi returns expressions that match the AH SPI field (transport
+// offset 4, len 4), preceded by a meta l4proto match for AH (51).
+func MatchAHSpi(spi uint32) []expr.Any {
+	return protoAndPayload(51, 4, 4, binaryutil.BigEndian.PutUint32(spi))
+}
+
+// MatchAHSequence returns expressions that match the AH sequence number field
+// (transport offset 8, len 4), preceded by a meta l4proto match for AH (51).
+func MatchAHSequence(seq uint32) []expr.Any {
+	return protoAndPayload(51, 8, 4, binaryutil.BigEndian.PutUint32(seq))
+}
+
+// MatchAHHdrLength returns expressions that match the AH header length field
+// (transport offset 1, len 1), preceded by a meta l4proto match for AH (51).
+func MatchAHHdrLength(hdrlength uint8) []expr.Any {
+	return protoAndPayload(51, 1, 1, []byte{hdrlength})
+}
+
+// ---------------------------------------------------------------------------
+// COMP matchers
+// ---------------------------------------------------------------------------
+
+// MatchCOMPCpi returns expressions that match the IPComp CPI field (transport
+// offset 2, len 2), preceded by a meta l4proto match for COMP (108).
+func MatchCOMPCpi(cpi uint16) []expr.Any {
+	return protoAndPayload(108, 2, 2, binaryutil.BigEndian.PutUint16(cpi))
+}
+
+// MatchCOMPNextHdr returns expressions that match the IPComp next header field
+// (transport offset 0, len 1), preceded by a meta l4proto match for COMP (108).
+// The proto parameter is a protocol name such as "tcp", "udp", etc.
+func MatchCOMPNextHdr(proto string) []expr.Any {
+	p := parseProtoHelper(proto)
+	if p == 0 {
+		return nil
+	}
+	return protoAndPayload(108, 0, 1, []byte{p})
+}
+
+// ---------------------------------------------------------------------------
+// UDPLite matchers
+// ---------------------------------------------------------------------------
+
+// MatchUDPLiteDport returns expressions that match the UDP-Lite destination
+// port (transport offset 2, len 2), preceded by a meta l4proto match for
+// UDP-Lite (136).
+func MatchUDPLiteDport(port uint16) []expr.Any {
+	return protoAndPayload(136, 2, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// MatchUDPLiteSport returns expressions that match the UDP-Lite source port
+// (transport offset 0, len 2), preceded by a meta l4proto match for
+// UDP-Lite (136).
+func MatchUDPLiteSport(port uint16) []expr.Any {
+	return protoAndPayload(136, 0, 2, binaryutil.BigEndian.PutUint16(port))
+}
+
+// ---------------------------------------------------------------------------
+// Additional meta matchers
+// ---------------------------------------------------------------------------
+
+// MatchIif returns expressions that match the input interface index using the
+// meta iif key (32-bit native-endian).
+func MatchIif(iif uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyIIF,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(iif),
+		},
+	}
+}
+
+// MatchOif returns expressions that match the output interface index using the
+// meta oif key (32-bit native-endian).
+func MatchOif(oif uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyOIF,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(oif),
+		},
+	}
+}
+
+// MatchIiftype returns expressions that match the input interface type using
+// the meta iiftype key (16-bit native-endian).
+func MatchIiftype(iftype uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyIIFTYPE,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint16(iftype),
+		},
+	}
+}
+
+// MatchOiftype returns expressions that match the output interface type using
+// the meta oiftype key (16-bit native-endian).
+func MatchOiftype(iftype uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyOIFTYPE,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint16(iftype),
+		},
+	}
+}
+
+// MatchIifgroup returns expressions that match the input interface group using
+// the meta iifgroup key (32-bit native-endian).
+func MatchIifgroup(group uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyIIFGROUP,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(group),
+		},
+	}
+}
+
+// MatchOifgroup returns expressions that match the output interface group using
+// the meta oifgroup key (32-bit native-endian).
+func MatchOifgroup(group uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyOIFGROUP,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(group),
+		},
+	}
+}
+
+// MatchMetaLength returns expressions that match the packet length using the
+// meta len key (32-bit native-endian).
+func MatchMetaLength(length uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyLEN,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(length),
+		},
+	}
+}
+
+// MatchMetaProtocol returns expressions that match the EtherType protocol using
+// the meta protocol key (16-bit big-endian, as it is a network-layer value).
+func MatchMetaProtocol(proto uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyPROTOCOL,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(proto),
+		},
+	}
+}
+
+// pktTypes maps packet type names to their numeric values.
+var pktTypes = map[string]byte{
+	"host":      0,
+	"broadcast": 1,
+	"multicast": 2,
+	"other":     3,
+}
+
+// MatchPktType returns expressions that match the packet type using the meta
+// pkttype key. The pkttype parameter is a name: "host", "broadcast",
+// "multicast", or "other".
+func MatchPktType(pkttype string) []expr.Any {
+	code, ok := pktTypes[strings.ToLower(pkttype)]
+	if !ok {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyPKTTYPE,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{code},
+		},
+	}
+}
+
+// MatchSkuid returns expressions that match the socket UID using the meta
+// skuid key (32-bit native-endian).
+func MatchSkuid(uid uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeySKUID,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(uid),
+		},
+	}
+}
+
+// MatchSkgid returns expressions that match the socket GID using the meta
+// skgid key (32-bit native-endian).
+func MatchSkgid(gid uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeySKGID,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(gid),
+		},
+	}
+}
+
+// MatchCpu returns expressions that match the CPU number using the meta cpu
+// key (32-bit native-endian).
+func MatchCpu(cpu uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyCPU,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(cpu),
+		},
+	}
+}
+
+// MatchCgroup returns expressions that match the cgroup v2 classid using the
+// meta cgroup key (32-bit native-endian).
+func MatchCgroup(cgroup uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Meta{
+			Key:      expr.MetaKeyCGROUP,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(cgroup),
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Additional meta set actions
+// ---------------------------------------------------------------------------
+
+// SetPriority returns expressions that set the packet priority (meta priority)
+// to the given 32-bit value.
+func SetPriority(priority uint32) []expr.Any {
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint32(priority),
+		},
+		&expr.Meta{
+			Key:            expr.MetaKeyPRIORITY,
+			SourceRegister: true,
+			Register:       1,
+		},
+	}
+}
+
+// SetNftrace returns expressions that enable or disable nftrace for matching
+// packets. When enable is true, nftrace is set to 1; otherwise it is set to 0.
+func SetNftrace(enable bool) []expr.Any {
+	var val byte
+	if enable {
+		val = 1
+	}
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     []byte{val},
+		},
+		&expr.Meta{
+			Key:            expr.MetaKeyNFTRACE,
+			SourceRegister: true,
+			Register:       1,
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Additional CT matchers
+// ---------------------------------------------------------------------------
+
+// ctDirections maps conntrack direction names to their numeric values.
+var ctDirections = map[string]byte{
+	"original": 0,
+	"reply":    1,
+}
+
+// MatchCTDirection returns expressions that match the conntrack direction.
+// The dir parameter is "original" or "reply".
+func MatchCTDirection(dir string) []expr.Any {
+	code, ok := ctDirections[strings.ToLower(dir)]
+	if !ok {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeyDIRECTION,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{code},
+		},
+	}
+}
+
+// ctStatusBits maps conntrack status flag names to their bitmask values.
+var ctStatusBits = map[string]uint32{
+	"expected":   1,
+	"seen-reply": 2,
+	"assured":    4,
+	"confirmed":  8,
+	"snat":       16,
+	"dnat":       32,
+	"dying":      512,
+}
+
+// MatchCTStatus returns expressions that match one or more conntrack status
+// flags. Flag names are OR'd together into a bitmask and matched using a
+// bitwise AND + cmp != 0 pattern. Supported names: "expected", "seen-reply",
+// "assured", "confirmed", "snat", "dnat", "dying".
+func MatchCTStatus(statuses ...string) []expr.Any {
+	var mask uint32
+	for _, s := range statuses {
+		if bit, ok := ctStatusBits[strings.ToLower(s)]; ok {
+			mask |= bit
+		}
+	}
+	if mask == 0 {
+		return nil
+	}
+	maskBytes := binaryutil.NativeEndian.PutUint32(mask)
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeySTATUS,
+			Register: 1,
+		},
+		&expr.Bitwise{
+			SourceRegister: 1,
+			DestRegister:   1,
+			Len:            4,
+			Mask:           maskBytes,
+			Xor:            []byte{0, 0, 0, 0},
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpNeq,
+			Register: 1,
+			Data:     []byte{0, 0, 0, 0},
+		},
+	}
+}
+
+// MatchCTZone returns expressions that match the conntrack zone (16-bit
+// native-endian).
+func MatchCTZone(zone uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeyZONE,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     binaryutil.NativeEndian.PutUint16(zone),
+		},
+	}
+}
+
+// ctL3Protos maps L3 protocol family names to their numeric values.
+var ctL3Protos = map[string]byte{
+	"ip":   2,
+	"ipv4": 2,
+	"ip6":  10,
+	"ipv6": 10,
+}
+
+// MatchCTL3Proto returns expressions that match the conntrack L3 protocol
+// family. The proto parameter is "ip"/"ipv4" (2) or "ip6"/"ipv6" (10).
+func MatchCTL3Proto(proto string) []expr.Any {
+	code, ok := ctL3Protos[strings.ToLower(proto)]
+	if !ok {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeyL3PROTOCOL,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{code},
+		},
+	}
+}
+
+// MatchCTProtocol returns expressions that match the conntrack L4 protocol
+// using a protocol name such as "tcp", "udp", etc.
+func MatchCTProtocol(proto string) []expr.Any {
+	p := parseProtoHelper(proto)
+	if p == 0 {
+		return nil
+	}
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeyPROTOCOL,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     []byte{p},
+		},
+	}
+}
+
+// MatchCTHelper returns expressions that match the conntrack helper name. The
+// helper string is null-padded to 16 bytes (IFNAMSIZ) for comparison.
+func MatchCTHelper(helper string) []expr.Any {
+	b := make([]byte, 16)
+	copy(b, []byte(helper))
+	return []expr.Any{
+		&expr.Ct{
+			Key:      expr.CtKeyHELPER,
+			Register: 1,
+		},
+		&expr.Cmp{
+			Op:       expr.CmpOpEq,
+			Register: 1,
+			Data:     b,
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Additional actions
+// ---------------------------------------------------------------------------
+
+// Redirect returns expressions that redirect the packet to the specified port
+// on the local machine. The port is loaded into register 1 and consumed by a
+// redir expression.
+func Redirect(port uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(port),
+		},
+		&expr.Redir{
+			RegisterProtoMin: 1,
+		},
+	}
+}
+
+// RedirectRange returns expressions that redirect the packet to a port in the
+// specified range on the local machine. The min and max ports are loaded into
+// registers 1 and 2 respectively.
+func RedirectRange(portMin, portMax uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(portMin),
+		},
+		&expr.Immediate{
+			Register: 2,
+			Data:     binaryutil.BigEndian.PutUint16(portMax),
+		},
+		&expr.Redir{
+			RegisterProtoMin: 1,
+			RegisterProtoMax: 2,
+		},
+	}
+}
+
+// Queue returns a queue expression that sends the packet to userspace via
+// NFQUEUE with the specified queue number.
+func Queue(num uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Queue{
+			Num: num,
+		},
+	}
+}
+
+// QueueBypass returns a queue expression that sends the packet to userspace
+// via NFQUEUE with the specified queue number and the bypass flag set. When
+// the bypass flag is set, packets are accepted if no userspace program is
+// listening on the queue.
+func QueueBypass(num uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Queue{
+			Num:  num,
+			Flag: expr.QueueFlag(unix.NFT_QUEUE_FLAG_BYPASS),
+		},
+	}
+}
+
+// icmpv6RejectCodes maps ICMPv6 reject code names to their numeric values.
+var icmpv6RejectCodes = map[string]uint8{
+	"no-route":          0,
+	"admin-prohibited":  1,
+	"addr-unreachable":  3,
+	"port-unreachable":  4,
+}
+
+// RejectICMPv6 returns a reject expression with an ICMPv6 unreachable code
+// specified by name. Supported code names: "no-route", "admin-prohibited",
+// "addr-unreachable", "port-unreachable".
+func RejectICMPv6(code string) []expr.Any {
+	c, ok := icmpv6RejectCodes[strings.ToLower(code)]
+	if !ok {
+		c = 4 // default to port-unreachable
+	}
+	return []expr.Any{
+		&expr.Reject{
+			Type: unix.NFT_REJECT_ICMP_UNREACH,
+			Code: c,
+		},
+	}
+}
+
+// icmpxRejectCodes maps ICMPx (inet family) reject code names to their values.
+var icmpxRejectCodes = map[string]uint8{
+	"port-unreachable": 0,
+	"admin-prohibited": 1,
+	"no-route":         2,
+	"host-unreachable": 3,
+}
+
+// RejectICMPx returns a reject expression for the inet family with an ICMPx
+// unreachable code specified by name. Supported code names:
+// "port-unreachable", "admin-prohibited", "no-route", "host-unreachable".
+func RejectICMPx(code string) []expr.Any {
+	c, ok := icmpxRejectCodes[strings.ToLower(code)]
+	if !ok {
+		c = 0 // default to port-unreachable
+	}
+	return []expr.Any{
+		&expr.Reject{
+			Type: unix.NFT_REJECT_ICMPX_UNREACH,
+			Code: c,
+		},
+	}
+}
+
+// LimitBytes returns a byte-based rate-limiting expression that allows up to
+// rate bytes per unit of time.
+func LimitBytes(rate uint64, unit string) []expr.Any {
+	return []expr.Any{
+		&expr.Limit{
+			Type:  expr.LimitTypePktBytes,
+			Rate:  rate,
+			Unit:  parseLimitUnitHelper(unit),
+			Burst: 0,
+		},
+	}
+}
+
+// MasqueradePersistent returns a masquerade expression with the persistent
+// flag set, which gives the same source address for a given connection.
+func MasqueradePersistent() []expr.Any {
+	return []expr.Any{
+		&expr.Masq{
+			Persistent: true,
+		},
+	}
+}
+
+// MasqueradeFullyRandom returns a masquerade expression with the fully-random
+// flag set, which randomizes both the source port and the source address
+// selection.
+func MasqueradeFullyRandom() []expr.Any {
+	return []expr.Any{
+		&expr.Masq{
+			FullyRandom: true,
+		},
+	}
+}
+
+// SNATPort returns expressions that perform source NAT to the specified IPv4
+// or IPv6 address and port. The address is loaded into register 1 and the port
+// into register 2.
+func SNATPort(addr string, port uint16) []expr.Any {
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return nil
+	}
+	ip4 := ip.To4()
+	family := uint32(unix.NFPROTO_IPV4)
+	ipBytes := []byte(ip4)
+	if ip4 == nil {
+		ip6 := ip.To16()
+		if ip6 == nil {
+			return nil
+		}
+		family = uint32(unix.NFPROTO_IPV6)
+		ipBytes = []byte(ip6)
+	}
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     ipBytes,
+		},
+		&expr.Immediate{
+			Register: 2,
+			Data:     binaryutil.BigEndian.PutUint16(port),
+		},
+		&expr.NAT{
+			Type:        expr.NATTypeSourceNAT,
+			Family:      family,
+			RegAddrMin:  1,
+			RegProtoMin: 2,
+		},
+	}
+}
+
+// SNATPortRange returns expressions that perform source NAT to the specified
+// IPv4 or IPv6 address with a port range. The address is loaded into register
+// 1, the min port into register 2, and the max port into register 3.
+func SNATPortRange(addr string, portMin, portMax uint16) []expr.Any {
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return nil
+	}
+	ip4 := ip.To4()
+	family := uint32(unix.NFPROTO_IPV4)
+	ipBytes := []byte(ip4)
+	if ip4 == nil {
+		ip6 := ip.To16()
+		if ip6 == nil {
+			return nil
+		}
+		family = uint32(unix.NFPROTO_IPV6)
+		ipBytes = []byte(ip6)
+	}
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     ipBytes,
+		},
+		&expr.Immediate{
+			Register: 2,
+			Data:     binaryutil.BigEndian.PutUint16(portMin),
+		},
+		&expr.Immediate{
+			Register: 3,
+			Data:     binaryutil.BigEndian.PutUint16(portMax),
+		},
+		&expr.NAT{
+			Type:        expr.NATTypeSourceNAT,
+			Family:      family,
+			RegAddrMin:  1,
+			RegProtoMin: 2,
+			RegProtoMax: 3,
+		},
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Debugging and error helpers
 // ---------------------------------------------------------------------------
 

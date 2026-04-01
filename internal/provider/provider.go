@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"github.com/blechschmidt/terraform-provider-nftables/internal/provfunc"
 	"github.com/google/nftables"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ provider.Provider = &NftablesProvider{}
+var (
+	_ provider.Provider              = &NftablesProvider{}
+	_ provider.ProviderWithFunctions = &NftablesProvider{}
+)
 
 type NftablesProvider struct {
 	version string
@@ -136,4 +141,8 @@ func (p *NftablesProvider) Resources(_ context.Context) []func() resource.Resour
 
 func (p *NftablesProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return nil
+}
+
+func (p *NftablesProvider) Functions(_ context.Context) []func() function.Function {
+	return provfunc.All()
 }
