@@ -2,15 +2,15 @@
 page_title: "set_nftrace function - nftables"
 subcategory: ""
 description: |-
-  set nftrace
+  Enable nftrace for debugging
 ---
 
 # function: set_nftrace
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Enable nftrace for debugging
 
 ## Signature
 
 ```text
-set_nftrace(...) string
+set_nftrace() string
 ```

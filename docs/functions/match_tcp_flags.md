@@ -2,15 +2,19 @@
 page_title: "match_tcp_flags function - nftables"
 subcategory: ""
 description: |-
-  match tcp flags
+  Match TCP flags
 ---
 
 # function: match_tcp_flags
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match TCP flags
 
 ## Signature
 
 ```text
-match_tcp_flags(...) string
+match_tcp_flags(flags string) string
 ```
+
+## Arguments
+
+1. `flags` (String) Pipe-separated flags: syn|ack|fin|rst|psh|urg|ecn|cwr

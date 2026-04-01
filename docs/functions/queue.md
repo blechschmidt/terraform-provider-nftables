@@ -2,15 +2,19 @@
 page_title: "queue function - nftables"
 subcategory: ""
 description: |-
-  queue
+  Queue to userspace
 ---
 
 # function: queue
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Queue to userspace
 
 ## Signature
 
 ```text
-queue(...) string
+queue(num number) string
 ```
+
+## Arguments
+
+1. `num` (Number) Queue number

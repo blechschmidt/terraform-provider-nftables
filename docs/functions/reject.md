@@ -2,15 +2,15 @@
 page_title: "reject function - nftables"
 subcategory: ""
 description: |-
-  reject
+  Reject with default ICMP error
 ---
 
 # function: reject
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Reject with default ICMP error
 
 ## Signature
 
 ```text
-reject(...) string
+reject() string
 ```

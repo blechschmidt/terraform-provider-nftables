@@ -2,15 +2,15 @@
 page_title: "return_verdict function - nftables"
 subcategory: ""
 description: |-
-  return verdict
+  Return from current chain
 ---
 
 # function: return_verdict
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Return from current chain
 
 ## Signature
 
 ```text
-return_verdict(...) string
+return_verdict() string
 ```

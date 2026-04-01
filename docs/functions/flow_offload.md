@@ -2,15 +2,19 @@
 page_title: "flow_offload function - nftables"
 subcategory: ""
 description: |-
-  flow offload
+  Offload flow to named flowtable
 ---
 
 # function: flow_offload
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Offload flow to named flowtable
 
 ## Signature
 
 ```text
-flow_offload(...) string
+flow_offload(name string) string
 ```
+
+## Arguments
+
+1. `name` (String) Flowtable name

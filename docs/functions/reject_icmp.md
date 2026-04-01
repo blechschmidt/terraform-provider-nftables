@@ -2,15 +2,19 @@
 page_title: "reject_icmp function - nftables"
 subcategory: ""
 description: |-
-  reject icmp
+  Reject with ICMP code
 ---
 
 # function: reject_icmp
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Reject with ICMP code
 
 ## Signature
 
 ```text
-reject_icmp(...) string
+reject_icmp(code string) string
 ```
+
+## Arguments
+
+1. `code` (String) ICMP code: port-unreachable, host-unreachable, net-unreachable, admin-prohibited, etc.

@@ -2,15 +2,19 @@
 page_title: "jump function - nftables"
 subcategory: ""
 description: |-
-  jump
+  Jump to another chain
 ---
 
 # function: jump
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Jump to another chain
 
 ## Signature
 
 ```text
-jump(...) string
+jump(chain string) string
 ```
+
+## Arguments
+
+1. `chain` (String) Target chain name

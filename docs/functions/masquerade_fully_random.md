@@ -2,15 +2,15 @@
 page_title: "masquerade_fully_random function - nftables"
 subcategory: ""
 description: |-
-  masquerade fully random
+  Masquerade with fully random port selection
 ---
 
 # function: masquerade_fully_random
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Masquerade with fully random port selection
 
 ## Signature
 
 ```text
-masquerade_fully_random(...) string
+masquerade_fully_random() string
 ```

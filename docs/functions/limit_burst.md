@@ -2,15 +2,21 @@
 page_title: "limit_burst function - nftables"
 subcategory: ""
 description: |-
-  limit burst
+  Rate limit packets with burst
 ---
 
 # function: limit_burst
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Rate limit packets with burst
 
 ## Signature
 
 ```text
-limit_burst(...) string
+limit_burst(rate number, unit string, burst number) string
 ```
+
+## Arguments
+
+1. `rate` (Number) Rate value
+2. `unit` (String) Time unit
+3. `burst` (Number) Burst value

@@ -2,15 +2,19 @@
 page_title: "match_ip6_nexthdr function - nftables"
 subcategory: ""
 description: |-
-  match ip6 nexthdr
+  Match IPv6 next header protocol
 ---
 
 # function: match_ip6_nexthdr
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match IPv6 next header protocol
 
 ## Signature
 
 ```text
-match_ip6_nexthdr(...) string
+match_ip6_nexthdr(proto string) string
 ```
+
+## Arguments
+
+1. `proto` (String) Protocol name (tcp, udp, icmpv6, ...)

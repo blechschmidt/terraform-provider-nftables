@@ -2,15 +2,19 @@
 page_title: "match_ip_daddr function - nftables"
 subcategory: ""
 description: |-
-  match ip daddr
+  Match IPv4 destination address (IP or CIDR)
 ---
 
 # function: match_ip_daddr
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match IPv4 destination address (IP or CIDR)
 
 ## Signature
 
 ```text
-match_ip_daddr(...) string
+match_ip_daddr(addr string) string
 ```
+
+## Arguments
+
+1. `addr` (String) IPv4 address or CIDR

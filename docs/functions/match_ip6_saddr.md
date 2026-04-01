@@ -2,15 +2,19 @@
 page_title: "match_ip6_saddr function - nftables"
 subcategory: ""
 description: |-
-  match ip6 saddr
+  Match IPv6 source address (IP or CIDR)
 ---
 
 # function: match_ip6_saddr
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match IPv6 source address (IP or CIDR)
 
 ## Signature
 
 ```text
-match_ip6_saddr(...) string
+match_ip6_saddr(addr string) string
 ```
+
+## Arguments
+
+1. `addr` (String) IPv6 address or CIDR

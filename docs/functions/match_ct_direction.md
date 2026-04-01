@@ -2,15 +2,19 @@
 page_title: "match_ct_direction function - nftables"
 subcategory: ""
 description: |-
-  match ct direction
+  Match conntrack direction
 ---
 
 # function: match_ct_direction
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match conntrack direction
 
 ## Signature
 
 ```text
-match_ct_direction(...) string
+match_ct_direction(direction string) string
 ```
+
+## Arguments
+
+1. `direction` (String) Direction: original or reply

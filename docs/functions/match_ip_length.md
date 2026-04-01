@@ -2,15 +2,19 @@
 page_title: "match_ip_length function - nftables"
 subcategory: ""
 description: |-
-  match ip length
+  Match IP total length
 ---
 
 # function: match_ip_length
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match IP total length
 
 ## Signature
 
 ```text
-match_ip_length(...) string
+match_ip_length(length number) string
 ```
+
+## Arguments
+
+1. `length` (Number) Length value

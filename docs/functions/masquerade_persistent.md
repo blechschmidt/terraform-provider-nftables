@@ -2,15 +2,15 @@
 page_title: "masquerade_persistent function - nftables"
 subcategory: ""
 description: |-
-  masquerade persistent
+  Masquerade with persistent mapping
 ---
 
 # function: masquerade_persistent
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Masquerade with persistent mapping
 
 ## Signature
 
 ```text
-masquerade_persistent(...) string
+masquerade_persistent() string
 ```

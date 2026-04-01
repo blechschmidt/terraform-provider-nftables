@@ -2,15 +2,19 @@
 page_title: "dnat function - nftables"
 subcategory: ""
 description: |-
-  dnat
+  Destination NAT to address
 ---
 
 # function: dnat
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Destination NAT to address
 
 ## Signature
 
 ```text
-dnat(...) string
+dnat(addr string) string
 ```
+
+## Arguments
+
+1. `addr` (String) Target IPv4 address

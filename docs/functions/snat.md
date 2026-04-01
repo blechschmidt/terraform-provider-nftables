@@ -2,15 +2,19 @@
 page_title: "snat function - nftables"
 subcategory: ""
 description: |-
-  snat
+  Source NAT to address
 ---
 
 # function: snat
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Source NAT to address
 
 ## Signature
 
 ```text
-snat(...) string
+snat(addr string) string
 ```
+
+## Arguments
+
+1. `addr` (String) Target IPv4 address

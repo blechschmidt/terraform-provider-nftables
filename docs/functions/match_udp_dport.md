@@ -2,15 +2,19 @@
 page_title: "match_udp_dport function - nftables"
 subcategory: ""
 description: |-
-  match udp dport
+  Match UDP destination port
 ---
 
 # function: match_udp_dport
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match UDP destination port
 
 ## Signature
 
 ```text
-match_udp_dport(...) string
+match_udp_dport(port number) string
 ```
+
+## Arguments
+
+1. `port` (Number) Port number

@@ -2,15 +2,19 @@
 page_title: "match_ip_ttl function - nftables"
 subcategory: ""
 description: |-
-  match ip ttl
+  Match IP TTL
 ---
 
 # function: match_ip_ttl
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match IP TTL
 
 ## Signature
 
 ```text
-match_ip_ttl(...) string
+match_ip_ttl(ttl number) string
 ```
+
+## Arguments
+
+1. `ttl` (Number) TTL value

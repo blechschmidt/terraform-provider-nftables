@@ -2,15 +2,19 @@
 page_title: "match_skuid function - nftables"
 subcategory: ""
 description: |-
-  match skuid
+  Match socket UID
 ---
 
 # function: match_skuid
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match socket UID
 
 ## Signature
 
 ```text
-match_skuid(...) string
+match_skuid(uid number) string
 ```
+
+## Arguments
+
+1. `uid` (Number) UID value

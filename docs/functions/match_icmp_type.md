@@ -2,15 +2,19 @@
 page_title: "match_icmp_type function - nftables"
 subcategory: ""
 description: |-
-  match icmp type
+  Match ICMP type
 ---
 
 # function: match_icmp_type
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match ICMP type
 
 ## Signature
 
 ```text
-match_icmp_type(...) string
+match_icmp_type(type_name string) string
 ```
+
+## Arguments
+
+1. `type_name` (String) ICMP type: echo-request, echo-reply, destination-unreachable, etc.

@@ -2,15 +2,19 @@
 page_title: "match_skgid function - nftables"
 subcategory: ""
 description: |-
-  match skgid
+  Match socket GID
 ---
 
 # function: match_skgid
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match socket GID
 
 ## Signature
 
 ```text
-match_skgid(...) string
+match_skgid(gid number) string
 ```
+
+## Arguments
+
+1. `gid` (Number) GID value

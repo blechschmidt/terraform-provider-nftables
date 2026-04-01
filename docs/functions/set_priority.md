@@ -2,15 +2,19 @@
 page_title: "set_priority function - nftables"
 subcategory: ""
 description: |-
-  set priority
+  Set packet priority
 ---
 
 # function: set_priority
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Set packet priority
 
 ## Signature
 
 ```text
-set_priority(...) string
+set_priority(priority number) string
 ```
+
+## Arguments
+
+1. `priority` (Number) Priority value

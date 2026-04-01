@@ -2,15 +2,19 @@
 page_title: "match_pkttype function - nftables"
 subcategory: ""
 description: |-
-  match pkttype
+  Match packet type
 ---
 
 # function: match_pkttype
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match packet type
 
 ## Signature
 
 ```text
-match_pkttype(...) string
+match_pkttype(pkttype string) string
 ```
+
+## Arguments
+
+1. `pkttype` (String) Packet type: host, broadcast, multicast, other

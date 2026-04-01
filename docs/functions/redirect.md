@@ -2,15 +2,19 @@
 page_title: "redirect function - nftables"
 subcategory: ""
 description: |-
-  redirect
+  Redirect to local port
 ---
 
 # function: redirect
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Redirect to local port
 
 ## Signature
 
 ```text
-redirect(...) string
+redirect(port number) string
 ```
+
+## Arguments
+
+1. `port` (Number) Target port

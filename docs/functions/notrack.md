@@ -2,15 +2,15 @@
 page_title: "notrack function - nftables"
 subcategory: ""
 description: |-
-  notrack
+  Disable connection tracking
 ---
 
 # function: notrack
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Disable connection tracking
 
 ## Signature
 
 ```text
-notrack(...) string
+notrack() string
 ```

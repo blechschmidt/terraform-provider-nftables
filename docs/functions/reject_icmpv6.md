@@ -2,15 +2,19 @@
 page_title: "reject_icmpv6 function - nftables"
 subcategory: ""
 description: |-
-  reject icmpv6
+  Reject with ICMPv6 code
 ---
 
 # function: reject_icmpv6
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Reject with ICMPv6 code
 
 ## Signature
 
 ```text
-reject_icmpv6(...) string
+reject_icmpv6(code string) string
 ```
+
+## Arguments
+
+1. `code` (String) ICMPv6 code: no-route, admin-prohibited, addr-unreachable, port-unreachable

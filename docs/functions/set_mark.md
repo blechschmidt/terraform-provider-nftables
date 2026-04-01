@@ -2,15 +2,19 @@
 page_title: "set_mark function - nftables"
 subcategory: ""
 description: |-
-  set mark
+  Set packet mark
 ---
 
 # function: set_mark
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Set packet mark
 
 ## Signature
 
 ```text
-set_mark(...) string
+set_mark(mark number) string
 ```
+
+## Arguments
+
+1. `mark` (Number) Mark value

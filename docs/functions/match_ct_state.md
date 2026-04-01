@@ -2,35 +2,19 @@
 page_title: "match_ct_state function - nftables"
 subcategory: ""
 description: |-
-  Match conntrack state.
+  Match conntrack state
 ---
 
 # function: match_ct_state
 
-Returns expressions that match the connection tracking state. Multiple states are combined with bitwise OR.
-
-## Example Usage
-
-```terraform
-# Accept established and related connections
-expr = provider::nftables::combine(
-  provider::nftables::match_ct_state(["established", "related"]),
-  provider::nftables::accept(),
-)
-
-# Drop invalid packets
-expr = provider::nftables::combine(
-  provider::nftables::match_ct_state(["invalid"]),
-  provider::nftables::drop(),
-)
-```
+Match conntrack state
 
 ## Signature
 
 ```text
-match_ct_state(states) string
+match_ct_state(states list) string
 ```
 
 ## Arguments
 
-- `states` (List of String) One or more of: `"new"`, `"established"`, `"related"`, `"invalid"`, `"untracked"`.
+1. `states` (List of String) States: new, established, related, invalid, untracked

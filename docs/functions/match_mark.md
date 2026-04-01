@@ -2,15 +2,19 @@
 page_title: "match_mark function - nftables"
 subcategory: ""
 description: |-
-  match mark
+  Match packet mark
 ---
 
 # function: match_mark
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match packet mark
 
 ## Signature
 
 ```text
-match_mark(...) string
+match_mark(mark number) string
 ```
+
+## Arguments
+
+1. `mark` (Number) Mark value

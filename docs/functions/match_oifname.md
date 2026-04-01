@@ -2,15 +2,19 @@
 page_title: "match_oifname function - nftables"
 subcategory: ""
 description: |-
-  match oifname
+  Match output interface name
 ---
 
 # function: match_oifname
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match output interface name
 
 ## Signature
 
 ```text
-match_oifname(...) string
+match_oifname(name string) string
 ```
+
+## Arguments
+
+1. `name` (String) Interface name

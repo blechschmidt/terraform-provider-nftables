@@ -2,15 +2,19 @@
 page_title: "match_ct_mark function - nftables"
 subcategory: ""
 description: |-
-  match ct mark
+  Match conntrack mark
 ---
 
 # function: match_ct_mark
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match conntrack mark
 
 ## Signature
 
 ```text
-match_ct_mark(...) string
+match_ct_mark(mark number) string
 ```
+
+## Arguments
+
+1. `mark` (Number) CT mark value

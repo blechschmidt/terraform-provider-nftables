@@ -2,15 +2,19 @@
 page_title: "match_sctp_sport function - nftables"
 subcategory: ""
 description: |-
-  match sctp sport
+  Match SCTP source port
 ---
 
 # function: match_sctp_sport
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match SCTP source port
 
 ## Signature
 
 ```text
-match_sctp_sport(...) string
+match_sctp_sport(port number) string
 ```
+
+## Arguments
+
+1. `port` (Number) Port number

@@ -2,15 +2,19 @@
 page_title: "match_nfproto function - nftables"
 subcategory: ""
 description: |-
-  match nfproto
+  Match nfproto (ipv4 or ipv6)
 ---
 
 # function: match_nfproto
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Match nfproto (ipv4 or ipv6)
 
 ## Signature
 
 ```text
-match_nfproto(...) string
+match_nfproto(proto string) string
 ```
+
+## Arguments
+
+1. `proto` (String) Protocol: ipv4 or ipv6

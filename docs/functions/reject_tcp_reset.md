@@ -2,15 +2,15 @@
 page_title: "reject_tcp_reset function - nftables"
 subcategory: ""
 description: |-
-  reject tcp reset
+  Reject with TCP RST
 ---
 
 # function: reject_tcp_reset
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Reject with TCP RST
 
 ## Signature
 
 ```text
-reject_tcp_reset(...) string
+reject_tcp_reset() string
 ```

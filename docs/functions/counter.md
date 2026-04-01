@@ -2,15 +2,15 @@
 page_title: "counter function - nftables"
 subcategory: ""
 description: |-
-  counter
+  Inline packet/byte counter
 ---
 
 # function: counter
 
-See the [Provider Functions overview](../index.md#provider-functions) for usage details.
+Inline packet/byte counter
 
 ## Signature
 
 ```text
-counter(...) string
+counter() string
 ```
