@@ -39,6 +39,25 @@ All six nftables address families are supported:
 - `bridge` — Bridging
 - `netdev` — Device-level (ingress/egress)
 
+## Provider Functions
+
+The provider includes 64 provider-defined functions for composing nftables rule expressions in a type-safe way. Functions are called with the `provider::nftables::` prefix and return JSON-encoded expression lists. Use `combine()` to merge them into a single rule.
+
+| Category | Functions | Description |
+|----------|-----------|-------------|
+| Combiner | `combine` | Merge expression lists into a single rule |
+| Verdicts | `accept`, `drop`, `return_verdict`, `jump`, `goto_chain` | Packet disposition |
+| Actions | `counter`, `log`, `limit`, `reject*`, `masquerade*`, `snat*`, `dnat*`, `redirect`, `notrack`, `flow_offload`, `queue` | Logging, rate limiting, NAT, and more |
+| Setters | `set_mark`, `set_ct_mark`, `set_priority`, `set_nftrace` | Modify packet/connection metadata |
+| IPv4 Matchers | `match_ip_saddr`, `match_ip_daddr`, `match_ip_protocol`, `match_ip_ttl`, `match_ip_length` | IPv4 header matching |
+| IPv6 Matchers | `match_ip6_saddr`, `match_ip6_daddr`, `match_ip6_hoplimit`, `match_ip6_nexthdr` | IPv6 header matching |
+| Transport Matchers | `match_tcp_dport`, `match_tcp_sport`, `match_tcp_flags`, `match_udp_*`, `match_sctp_*`, `match_dccp_*` | TCP/UDP/SCTP/DCCP matching |
+| ICMP Matchers | `match_icmp_type`, `match_icmpv6_type` | ICMP message type matching |
+| Meta Matchers | `match_iifname`, `match_oifname`, `match_mark`, `match_nfproto`, `match_l4proto`, `match_pkttype`, `match_skuid`, `match_skgid` | Interface, mark, and socket matching |
+| CT Matchers | `match_ct_state`, `match_ct_mark`, `match_ct_status`, `match_ct_direction` | Connection tracking matching |
+
+See the [Provider Functions documentation](functions/) for detailed signatures, arguments, and examples for every function.
+
 ## Example Usage
 
 ```terraform
