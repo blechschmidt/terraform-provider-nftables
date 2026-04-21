@@ -2651,12 +2651,14 @@ func RejectICMPv6(code string) []expr.Any {
 	}
 }
 
-// icmpxRejectCodes maps ICMPx (inet family) reject code names to their values.
+// icmpxRejectCodes maps ICMPx (inet family) reject code names to the kernel
+// enum values in include/uapi/linux/netfilter/nf_tables.h. The order matters:
+// no-route=0, port-unreachable=1, host-unreachable=2, admin-prohibited=3.
 var icmpxRejectCodes = map[string]uint8{
-	"port-unreachable": 0,
-	"admin-prohibited": 1,
-	"no-route":         2,
-	"host-unreachable": 3,
+	"no-route":         unix.NFT_REJECT_ICMPX_NO_ROUTE,
+	"port-unreachable": unix.NFT_REJECT_ICMPX_PORT_UNREACH,
+	"host-unreachable": unix.NFT_REJECT_ICMPX_HOST_UNREACH,
+	"admin-prohibited": unix.NFT_REJECT_ICMPX_ADMIN_PROHIBITED,
 }
 
 // RejectICMPx returns a reject expression for the inet family with an ICMPx

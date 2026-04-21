@@ -67,21 +67,37 @@ func All() []func() function.Function {
 		NewMatchIPProtocolFunction,
 		NewMatchIPTTLFunction,
 		NewMatchIPLengthFunction,
+		NewMatchIPDscpFunction,
+		NewMatchIPIdFunction,
+		NewMatchIPVersionFunction,
+		NewMatchIPHdrLengthFunction,
 		// IPv6 matchers
 		NewMatchIP6SaddrFunction,
 		NewMatchIP6DaddrFunction,
 		NewMatchIP6HopLimitFunction,
 		NewMatchIP6NextHdrFunction,
+		NewMatchIP6FlowLabelFunction,
+		NewMatchIP6LengthFunction,
+		NewMatchIP6VersionFunction,
 		// Transport matchers
 		NewMatchTCPDportFunction,
 		NewMatchTCPSportFunction,
 		NewMatchTCPFlagsFunction,
+		NewMatchTCPSequenceFunction,
+		NewMatchTCPWindowFunction,
 		NewMatchUDPDportFunction,
 		NewMatchUDPSportFunction,
+		NewMatchUDPLengthFunction,
 		NewMatchSCTPDportFunction,
 		NewMatchSCTPSportFunction,
 		NewMatchDCCPDportFunction,
 		NewMatchDCCPSportFunction,
+		// Link-layer matchers
+		NewMatchEtherSaddrFunction,
+		NewMatchEtherTypeFunction,
+		NewMatchVLANIdFunction,
+		NewMatchARPOperationFunction,
+		NewMatchARPHtypeFunction,
 		// ICMP
 		NewMatchICMPTypeFunction,
 		NewMatchICMPv6TypeFunction,
@@ -94,6 +110,8 @@ func All() []func() function.Function {
 		NewMatchPktTypeFunction,
 		NewMatchSkuidFunction,
 		NewMatchSkgidFunction,
+		NewMatchMetaLengthFunction,
+		NewMatchMetaProtocolFunction,
 		// CT matchers
 		NewMatchCTStateFunction,
 		NewMatchCTMarkFunction,
@@ -964,6 +982,62 @@ func NewCmpIPv6Function() function.Function {
 }
 func NewCmpPortFunction() function.Function {
 	return &numberArgFunc{name: "cmp_port", summary: "Compare register against port number", paramName: "port", paramDesc: "Port number", fn: func(v int64) []expr.Any { return nfthelper.CmpPort(uint16(v)) }}
+}
+
+// ---------------------------------------------------------------------------
+// Additional header-field matchers (quick-reference coverage)
+// ---------------------------------------------------------------------------
+
+func NewMatchIPDscpFunction() function.Function {
+	return &numberArgFunc{name: "match_ip_dscp", summary: "Match IPv4 DSCP value (0-63)", paramName: "dscp", paramDesc: "DSCP value (e.g. 0 for cs0, 8 for cs1, 46 for ef)", fn: func(v int64) []expr.Any { return nfthelper.MatchIPDSCP(uint8(v)) }}
+}
+func NewMatchIPIdFunction() function.Function {
+	return &numberArgFunc{name: "match_ip_id", summary: "Match IPv4 identification field", paramName: "id", paramDesc: "IP id value", fn: func(v int64) []expr.Any { return nfthelper.MatchIPId(uint16(v)) }}
+}
+func NewMatchIPVersionFunction() function.Function {
+	return &numberArgFunc{name: "match_ip_version", summary: "Match IP version field", paramName: "version", paramDesc: "Version (4 for IPv4, 6 for IPv6)", fn: func(v int64) []expr.Any { return nfthelper.MatchIPVersion(uint8(v)) }}
+}
+func NewMatchIPHdrLengthFunction() function.Function {
+	return &numberArgFunc{name: "match_ip_hdrlength", summary: "Match IPv4 header length (in 32-bit words)", paramName: "hdrlength", paramDesc: "Header length value", fn: func(v int64) []expr.Any { return nfthelper.MatchIPHdrLength(uint8(v)) }}
+}
+func NewMatchIP6FlowLabelFunction() function.Function {
+	return &numberArgFunc{name: "match_ip6_flowlabel", summary: "Match IPv6 flow label", paramName: "flowlabel", paramDesc: "Flow label value (20 bits)", fn: func(v int64) []expr.Any { return nfthelper.MatchIP6FlowLabel(uint32(v)) }}
+}
+func NewMatchIP6LengthFunction() function.Function {
+	return &numberArgFunc{name: "match_ip6_length", summary: "Match IPv6 payload length", paramName: "length", paramDesc: "Length value", fn: func(v int64) []expr.Any { return nfthelper.MatchIP6Length(uint16(v)) }}
+}
+func NewMatchIP6VersionFunction() function.Function {
+	return &numberArgFunc{name: "match_ip6_version", summary: "Match IPv6 version field", paramName: "version", paramDesc: "Version (usually 6)", fn: func(v int64) []expr.Any { return nfthelper.MatchIP6Version(uint8(v)) }}
+}
+func NewMatchTCPSequenceFunction() function.Function {
+	return &numberArgFunc{name: "match_tcp_sequence", summary: "Match TCP sequence number", paramName: "seq", paramDesc: "Sequence number", fn: func(v int64) []expr.Any { return nfthelper.MatchTCPSequence(uint32(v)) }}
+}
+func NewMatchTCPWindowFunction() function.Function {
+	return &numberArgFunc{name: "match_tcp_window", summary: "Match TCP window size", paramName: "window", paramDesc: "Window value", fn: func(v int64) []expr.Any { return nfthelper.MatchTCPWindow(uint16(v)) }}
+}
+func NewMatchUDPLengthFunction() function.Function {
+	return &numberArgFunc{name: "match_udp_length", summary: "Match UDP datagram length", paramName: "length", paramDesc: "Length value", fn: func(v int64) []expr.Any { return nfthelper.MatchUDPLength(uint16(v)) }}
+}
+func NewMatchEtherSaddrFunction() function.Function {
+	return &stringArgFunc{name: "match_ether_saddr", summary: "Match Ethernet source MAC address", paramName: "mac", paramDesc: "MAC address (e.g. 00:11:22:33:44:55)", fn: nfthelper.MatchEtherSaddr}
+}
+func NewMatchEtherTypeFunction() function.Function {
+	return &numberArgFunc{name: "match_ether_type", summary: "Match Ethernet type (EtherType value)", paramName: "ethertype", paramDesc: "EtherType (e.g. 0x0800 for IP, 0x86dd for IPv6, 0x0806 for ARP)", fn: func(v int64) []expr.Any { return nfthelper.MatchEtherType(uint16(v)) }}
+}
+func NewMatchVLANIdFunction() function.Function {
+	return &numberArgFunc{name: "match_vlan_id", summary: "Match VLAN identifier (0-4094)", paramName: "id", paramDesc: "VLAN ID", fn: func(v int64) []expr.Any { return nfthelper.MatchVLANId(uint16(v)) }}
+}
+func NewMatchARPOperationFunction() function.Function {
+	return &stringArgFunc{name: "match_arp_operation", summary: "Match ARP operation", paramName: "op", paramDesc: "Operation name: request, reply, rrequest, rreply, inrequest, inreply, nak", fn: nfthelper.MatchARPOperation}
+}
+func NewMatchARPHtypeFunction() function.Function {
+	return &numberArgFunc{name: "match_arp_htype", summary: "Match ARP hardware type", paramName: "htype", paramDesc: "Hardware type value (1 for Ethernet)", fn: func(v int64) []expr.Any { return nfthelper.MatchARPHtype(uint16(v)) }}
+}
+func NewMatchMetaLengthFunction() function.Function {
+	return &numberArgFunc{name: "match_meta_length", summary: "Match total packet length", paramName: "length", paramDesc: "Length in bytes", fn: func(v int64) []expr.Any { return nfthelper.MatchMetaLength(uint32(v)) }}
+}
+func NewMatchMetaProtocolFunction() function.Function {
+	return &numberArgFunc{name: "match_meta_protocol", summary: "Match EtherType via meta protocol", paramName: "ethertype", paramDesc: "EtherType (e.g. 0x0800 for IPv4, 0x86dd for IPv6)", fn: func(v int64) []expr.Any { return nfthelper.MatchMetaProtocol(uint16(v)) }}
 }
 
 // Ensure all generic function types implement the interface
