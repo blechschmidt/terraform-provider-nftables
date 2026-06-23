@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"os"
 	"github.com/blechschmidt/terraform-provider-nftables/internal/provfunc"
 	"github.com/google/nftables"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -12,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"os"
 )
 
 var (
@@ -51,8 +51,11 @@ func (p *NftablesProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 		Description: "Terraform provider for managing nftables firewall rules via netlink.",
 		Attributes: map[string]schema.Attribute{
 			"namespace": schema.StringAttribute{
-				Optional:    true,
-				Description: "Network namespace to operate in. If not set, uses the default namespace.",
+				Optional: true,
+				Description: "Network namespace to operate in. If not set, uses the default namespace. " +
+					"Accepts a bare `ip netns` name, or one of the prefixed forms `name:<name>`, " +
+					"`pid:<pid>`, `path:<nsfs-path>`, or `docker:<container-id-or-name>` (the network " +
+					"namespace of a running Docker container, resolved through the Docker Engine API).",
 			},
 		},
 	}
@@ -70,12 +73,19 @@ func (p *NftablesProvider) Configure(ctx context.Context, req provider.Configure
 
 	if !config.Namespace.IsNull() && !config.Namespace.IsUnknown() {
 		ns = config.Namespace.ValueString()
-		nsPath := fmt.Sprintf("/var/run/netns/%s", ns)
+		nsPath, err := resolveNamespacePath(ns)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to resolve network namespace",
+				fmt.Sprintf("Could not resolve namespace %q: %s", ns, err),
+			)
+			return
+		}
 		fd, err := os.Open(nsPath)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Failed to open network namespace",
-				fmt.Sprintf("Could not open namespace %q: %s", ns, err),
+				fmt.Sprintf("Could not open namespace %q (%s): %s", ns, nsPath, err),
 			)
 			return
 		}

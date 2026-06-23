@@ -10,7 +10,7 @@ A Terraform provider for managing Linux [nftables](https://wiki.nftables.org/) f
   - `expression` — familiar `nft` syntax (`tcp dport 22 counter accept`).
   - `expr` — JSON-encoded netlink VM statement lists for full kernel-level control.
   - 64 provider-defined functions (`provider::nftables::*`) for type-safe rule composition.
-- Optional network namespace support via the `namespace` provider argument.
+- Optional network namespace support via the `namespace` provider argument — by `ip netns` name, `pid:`, `path:`, or the network namespace of a running Docker container (`docker:<id-or-name>`).
 
 ## Installation
 
@@ -24,7 +24,9 @@ terraform {
 }
 
 provider "nftables" {
-  # namespace = "my_netns"  # optional
+  # namespace = "my_netns"                    # optional: ip netns name
+  # namespace = "pid:12345"                   # ...or a process's netns
+  # namespace = "docker:my_container"         # ...or a running container's netns
 }
 ```
 

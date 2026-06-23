@@ -64,6 +64,7 @@ See the [Provider Functions documentation](functions/) for detailed signatures, 
 provider "nftables" {
   # Optional: operate within a network namespace
   # namespace = "my_namespace"
+  # See "Network namespaces" below for the pid:, path:, and docker: forms.
 }
 
 resource "nftables_table" "filter" {
@@ -147,6 +148,34 @@ rule := nfthelper.Combine(
     nfthelper.Accept(),
 )
 ```
+
+## Network namespaces
+
+By default the provider operates on the host's default network namespace. Set the
+`namespace` argument to target a different one. Several forms are accepted:
+
+| Form | Resolves to | Example |
+|---|---|---|
+| `<name>` | A named namespace created with `ip netns add` (`/var/run/netns/<name>`) | `namespace = "my_netns"` |
+| `name:<name>` | The same, stated explicitly | `namespace = "name:my_netns"` |
+| `pid:<pid>` | The network namespace of a process (`/proc/<pid>/ns/net`) | `namespace = "pid:12345"` |
+| `path:<path>` | An nsfs path opened verbatim | `namespace = "path:/var/run/netns/my_netns"` |
+| `docker:<id-or-name>` | The network namespace of a running Docker container, resolved through the Docker Engine API | `namespace = "docker:${docker_container.gateway.id}"` |
+
+The `docker:` form lets a module manage the firewall of a container created by the
+[Docker provider](https://registry.terraform.io/providers/kreuzwerker/docker/latest)
+without a shell helper. It queries the Docker Engine API over the local socket,
+honouring `DOCKER_HOST` when it names a `unix://` socket and otherwise defaulting
+to `/var/run/docker.sock`, and uses the container's init PID.
+
+```terraform
+provider "nftables" {
+  namespace = "docker:${docker_container.gateway.id}"
+}
+```
+
+Targeting a namespace requires the Terraform process to have the privileges needed
+to open the corresponding nsfs path (typically root or `CAP_SYS_ADMIN`).
 
 ## Quick reference
 
@@ -313,4 +342,4 @@ Values like `cs1`, `ip`, and `arp` are expanded to their numeric equivalents (DS
 
 ### Optional
 
-- `namespace` (String) Network namespace to operate in. If not set, uses the default namespace.
+- `namespace` (String) Network namespace to operate in. If not set, uses the default namespace. Accepts a bare `ip netns` name, or one of the prefixed forms `name:<name>`, `pid:<pid>`, `path:<nsfs-path>`, or `docker:<container-id-or-name>` (the network namespace of a running Docker container, resolved through the Docker Engine API).
