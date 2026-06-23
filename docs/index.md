@@ -41,14 +41,14 @@ All six nftables address families are supported:
 
 ## Provider Functions
 
-The provider includes 64 provider-defined functions for composing nftables rule expressions in a type-safe way. Functions are called with the `provider::nftables::` prefix and return JSON-encoded expression lists. Use `combine()` to merge them into a single rule.
+The provider includes 66 provider-defined functions for composing nftables rule expressions in a type-safe way. Functions are called with the `provider::nftables::` prefix and return JSON-encoded expression lists. Use `combine()` to merge them into a single rule.
 
 | Category | Functions | Description |
 |----------|-----------|-------------|
 | Combiner | `combine` | Merge expression lists into a single rule |
 | Verdicts | `accept`, `drop`, `return_verdict`, `jump`, `goto_chain` | Packet disposition |
 | Actions | `counter`, `log`, `limit`, `reject*`, `masquerade*`, `snat*`, `dnat*`, `redirect`, `notrack`, `flow_offload`, `queue` | Logging, rate limiting, NAT, and more |
-| Setters | `set_mark`, `set_ct_mark`, `set_priority`, `set_nftrace` | Modify packet/connection metadata |
+| Setters | `set_mark`, `set_ct_mark`, `set_priority`, `set_nftrace`, `set_tcp_mss`, `clamp_tcp_mss_pmtu` | Modify packet/connection metadata and clamp TCP MSS |
 | IPv4 Matchers | `match_ip_saddr`, `match_ip_daddr`, `match_ip_protocol`, `match_ip_ttl`, `match_ip_length` | IPv4 header matching |
 | IPv6 Matchers | `match_ip6_saddr`, `match_ip6_daddr`, `match_ip6_hoplimit`, `match_ip6_nexthdr` | IPv6 header matching |
 | Transport Matchers | `match_tcp_dport`, `match_tcp_sport`, `match_tcp_flags`, `match_udp_*`, `match_sctp_*`, `match_dccp_*` | TCP/UDP/SCTP/DCCP matching |
@@ -327,6 +327,8 @@ Values like `cs1`, `ip`, and `arp` are expanded to their numeric equivalents (DS
 | `tcp dport 22 meta priority set 10` | `tcp dport 22 meta priority set 10` | `match_tcp_dport(22), set_priority(10)` |
 | `udp dport 53 notrack` | `udp dport 53 notrack` | `match_udp_dport(53), notrack()` |
 | `tcp dport 8080 queue num 1` | `tcp dport 8080 queue num 1` | `match_tcp_dport(8080), queue(1)` |
+| `tcp flags syn tcp option maxseg size set 1400` | `tcp flags syn tcp option maxseg size set 1400` | `match_tcp_flags("syn"), set_tcp_mss(1400)` |
+| `tcp flags syn tcp option maxseg size set rt mtu` | `tcp flags syn tcp option maxseg size set rt mtu` | `match_tcp_flags("syn"), clamp_tcp_mss_pmtu()` |
 
 ### Combined examples
 

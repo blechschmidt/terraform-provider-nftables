@@ -854,6 +854,20 @@ func TestNftRef_setPriority(t *testing.T) {
 		"priority set")
 }
 
+func TestNftRef_setTCPMSS(t *testing.T) {
+	testBoth(t, cfgIPInput,
+		"tcp dport 80 tcp option maxseg size set 1400",
+		`provider::nftables::match_tcp_dport(80), provider::nftables::set_tcp_mss(1400)`,
+		"tcp option maxseg size set 1400")
+}
+
+func TestNftRef_clampTCPMSSToPMTU(t *testing.T) {
+	testBoth(t, cfgIPInput,
+		"tcp dport 80 tcp option maxseg size set rt mtu",
+		`provider::nftables::match_tcp_dport(80), provider::nftables::clamp_tcp_mss_pmtu()`,
+		"tcp option maxseg size set rt mtu")
+}
+
 // ===========================================================================
 // Notrack
 // ===========================================================================

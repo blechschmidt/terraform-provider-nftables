@@ -105,6 +105,10 @@ func TestParser_tcpAllFields(t *testing.T) {
 	mustParse(t, "tcp checksum 0x1234 accept", nftables.TableFamilyIPv4)
 	mustParse(t, "tcp urgptr 0 accept", nftables.TableFamilyIPv4)
 	mustParse(t, "tcp dport != 22 accept", nftables.TableFamilyIPv4)
+	// MSS clamping
+	mustParse(t, "tcp option maxseg size set 1400 accept", nftables.TableFamilyIPv4)
+	mustParse(t, "tcp option maxseg size set rt mtu accept", nftables.TableFamilyIPv4)
+	mustParse(t, "tcp flags syn tcp option maxseg size set 1400", nftables.TableFamilyIPv4)
 }
 
 func TestParser_tcpErrors(t *testing.T) {
@@ -112,6 +116,9 @@ func TestParser_tcpErrors(t *testing.T) {
 	mustFail(t, "tcp dport", nftables.TableFamilyIPv4)
 	mustFail(t, "tcp unknown 1 accept", nftables.TableFamilyIPv4)
 	mustFail(t, "tcp flags invalid_flag accept", nftables.TableFamilyIPv4)
+	mustFail(t, "tcp option maxseg size set notanumber accept", nftables.TableFamilyIPv4)
+	mustFail(t, "tcp option foobar", nftables.TableFamilyIPv4)
+	mustFail(t, "tcp option maxseg size set rt foo", nftables.TableFamilyIPv4)
 }
 
 // --- UDP match ---

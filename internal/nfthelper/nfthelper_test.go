@@ -149,6 +149,45 @@ func TestSetCTMark(t *testing.T) {
 	}
 }
 
+func TestClampTCPMSS(t *testing.T) {
+	exprs := ClampTCPMSS(1400)
+	if len(exprs) != 2 {
+		t.Fatalf("len=%d, want 2", len(exprs))
+	}
+	imm, ok := exprs[0].(*expr.Immediate)
+	if !ok {
+		t.Fatalf("exprs[0] is %T, want *expr.Immediate", exprs[0])
+	}
+	// 1400 = 0x0578, big-endian.
+	if len(imm.Data) != 2 || imm.Data[0] != 0x05 || imm.Data[1] != 0x78 {
+		t.Errorf("immediate data=%v, want [5 120]", imm.Data)
+	}
+	eh, ok := exprs[1].(*expr.Exthdr)
+	if !ok {
+		t.Fatalf("exprs[1] is %T, want *expr.Exthdr", exprs[1])
+	}
+	if eh.Op != expr.ExthdrOpTcpopt || eh.Type != 2 || eh.Offset != 2 || eh.Len != 2 || eh.SourceRegister != 1 {
+		t.Errorf("exthdr=%+v, want maxseg set (Op=Tcpopt Type=2 Offset=2 Len=2 SReg=1)", eh)
+	}
+}
+
+func TestClampTCPMSSToPMTU(t *testing.T) {
+	exprs := ClampTCPMSSToPMTU()
+	if len(exprs) != 2 {
+		t.Fatalf("len=%d, want 2", len(exprs))
+	}
+	rt, ok := exprs[0].(*expr.Rt)
+	if !ok {
+		t.Fatalf("exprs[0] is %T, want *expr.Rt", exprs[0])
+	}
+	if rt.Key != expr.RtTCPMSS || rt.Register != 1 {
+		t.Errorf("rt=%+v, want Key=RtTCPMSS Register=1", rt)
+	}
+	if _, ok := exprs[1].(*expr.Exthdr); !ok {
+		t.Fatalf("exprs[1] is %T, want *expr.Exthdr", exprs[1])
+	}
+}
+
 // --- Verdicts ---
 
 func TestVerdicts(t *testing.T) {

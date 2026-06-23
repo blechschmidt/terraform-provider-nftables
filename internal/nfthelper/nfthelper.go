@@ -678,6 +678,58 @@ func SetCTMark(mark uint32) []expr.Any {
 	}
 }
 
+// tcpMSSExthdr returns the exthdr "set" statement that writes register 1 into
+// the TCP MAXSEG option. The MSS lives at offset 2 (after the 1-byte kind and
+// 1-byte length) and is 2 bytes wide; the option kind is 2 (TCPOPT_MAXSEG).
+func tcpMSSExthdr() *expr.Exthdr {
+	return &expr.Exthdr{
+		SourceRegister: 1,
+		Op:             expr.ExthdrOpTcpopt,
+		Type:           2, // TCPOPT_MAXSEG
+		Offset:         2,
+		Len:            2,
+	}
+}
+
+// ClampTCPMSS returns expressions that rewrite the TCP MSS option to a fixed
+// value (nft: "tcp option maxseg size set <mss>"). MSS clamping is the standard
+// fix for PMTU blackholes on PPPoE, VPN, and tunnel paths. The value is loaded
+// into a register as a big-endian 16-bit integer, then written to the option.
+// These are pure statements with no protocol match of their own; combine them
+// after a matcher such as MatchTCPFlags("syn").
+//
+// Example:
+//
+//	exprs := nfthelper.ClampTCPMSS(1400)
+func ClampTCPMSS(mss uint16) []expr.Any {
+	return []expr.Any{
+		&expr.Immediate{
+			Register: 1,
+			Data:     binaryutil.BigEndian.PutUint16(mss),
+		},
+		tcpMSSExthdr(),
+	}
+}
+
+// ClampTCPMSSToPMTU returns expressions that clamp the TCP MSS option to the
+// path MTU of the route (nft: "tcp option maxseg size set rt mtu"). The route's
+// MSS is loaded into a register and written to the option, so the advertised
+// MSS tracks the egress path automatically. Like ClampTCPMSS, this is a pure
+// statement meant to follow a matcher such as MatchTCPFlags("syn").
+//
+// Example:
+//
+//	exprs := nfthelper.ClampTCPMSSToPMTU()
+func ClampTCPMSSToPMTU() []expr.Any {
+	return []expr.Any{
+		&expr.Rt{
+			Register: 1,
+			Key:      expr.RtTCPMSS,
+		},
+		tcpMSSExthdr(),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Verdict functions
 // ---------------------------------------------------------------------------

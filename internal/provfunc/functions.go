@@ -61,6 +61,8 @@ func All() []func() function.Function {
 		NewSetCTMarkFunction,
 		NewSetPriorityFunction,
 		NewSetNftraceFunction,
+		NewSetTCPMSSFunction,
+		NewClampTCPMSSToPMTUFunction,
 		// IPv4 matchers
 		NewMatchIPSaddrFunction,
 		NewMatchIPDaddrFunction,
@@ -672,6 +674,14 @@ func NewSetPriorityFunction() function.Function {
 
 func NewSetNftraceFunction() function.Function {
 	return &noArgFunc{name: "set_nftrace", summary: "Enable nftrace for debugging", fn: func() []expr.Any { return nfthelper.SetNftrace(true) }}
+}
+
+func NewSetTCPMSSFunction() function.Function {
+	return &numberArgFunc{name: "set_tcp_mss", summary: "Clamp the TCP MSS option to a fixed value", paramName: "mss", paramDesc: "Maximum segment size in bytes", fn: func(v int64) []expr.Any { return nfthelper.ClampTCPMSS(uint16(v)) }}
+}
+
+func NewClampTCPMSSToPMTUFunction() function.Function {
+	return &noArgFunc{name: "clamp_tcp_mss_pmtu", summary: "Clamp the TCP MSS option to the path MTU of the route", fn: nfthelper.ClampTCPMSSToPMTU}
 }
 
 // ---------------------------------------------------------------------------

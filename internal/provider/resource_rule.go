@@ -1251,6 +1251,11 @@ func parseTCPMatch(tokens []string, family nftables.TableFamily) ([]expr.Any, in
 	field := tokens[1]
 	i := 2
 
+	// MSS clamping: "tcp option maxseg size set <mss>" or "... set rt mtu".
+	if field == "option" {
+		return parseTCPOptionSet(tokens, protoExprs)
+	}
+
 	op := expr.CmpOpEq
 	if i < len(tokens) && tokens[i] == "!=" {
 		op = expr.CmpOpNeq
@@ -1352,6 +1357,48 @@ func parseTCPMatch(tokens []string, family nftables.TableFamily) ([]expr.Any, in
 	default:
 		return nil, 0, fmt.Errorf("unknown tcp field: %q", field)
 	}
+}
+
+// parseTCPOptionSet handles MSS clamping, written as
+// "tcp option maxseg size set <mss>" (fixed value) or
+// "tcp option maxseg size set rt mtu" (clamp to the route's path MTU). The MSS
+// is written to the TCP MAXSEG option (kind 2) at option offset 2, length 2, via
+// an exthdr "set" statement sourced from register 1. protoExprs carries the
+// leading l4proto-TCP match already built by parseTCPMatch.
+func parseTCPOptionSet(tokens []string, protoExprs []expr.Any) ([]expr.Any, int, error) {
+	// tokens: tcp option maxseg size set <value...>
+	if len(tokens) < 6 || tokens[2] != "maxseg" || tokens[3] != "size" || tokens[4] != "set" {
+		return nil, 0, fmt.Errorf("tcp option only supports \"maxseg size set <mss>\" (MSS clamping)")
+	}
+
+	exthdr := &expr.Exthdr{
+		SourceRegister: 1,
+		Op:             expr.ExthdrOpTcpopt,
+		Type:           2, // TCPOPT_MAXSEG
+		Offset:         2,
+		Len:            2,
+	}
+
+	// Clamp to path MTU: "... set rt mtu".
+	if tokens[5] == "rt" {
+		if len(tokens) < 7 || tokens[6] != "mtu" {
+			return nil, 0, fmt.Errorf("tcp option maxseg size set rt requires \"mtu\"")
+		}
+		return append(protoExprs,
+			&expr.Rt{Register: 1, Key: expr.RtTCPMSS},
+			exthdr,
+		), 7, nil
+	}
+
+	// Fixed value: "... set <mss>".
+	mss, err := strconv.ParseUint(tokens[5], 10, 16)
+	if err != nil {
+		return nil, 0, fmt.Errorf("invalid mss: %s", tokens[5])
+	}
+	return append(protoExprs,
+		&expr.Immediate{Register: 1, Data: binaryutil.BigEndian.PutUint16(uint16(mss))},
+		exthdr,
+	), 6, nil
 }
 
 func parseTCPFlags(s string) (byte, error) {

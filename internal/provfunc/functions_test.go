@@ -52,7 +52,7 @@ func TestAllFunctionNames(t *testing.T) {
 		"combine", "accept", "drop", "return_verdict", "jump", "goto_chain",
 		"counter", "log", "limit", "limit_burst", "reject", "reject_tcp_reset",
 		"reject_icmp", "masquerade", "snat", "dnat", "dnat_port", "notrack",
-		"set_mark", "set_ct_mark",
+		"set_mark", "set_ct_mark", "set_tcp_mss", "clamp_tcp_mss_pmtu",
 		"match_ip_saddr", "match_ip_daddr", "match_ip_protocol", "match_ip_ttl",
 		"match_ip6_saddr", "match_ip6_daddr", "match_ip6_hoplimit",
 		"match_tcp_dport", "match_tcp_sport", "match_tcp_flags",
